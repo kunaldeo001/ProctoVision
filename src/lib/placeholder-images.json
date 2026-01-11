@@ -1,3 +1,34 @@
 {
-  "placeholderImages": []
+  "placeholderImages": [
+    {
+      "id": "hero-image",
+      "description": "Abstract network of nodes representing AI",
+      "imageUrl": "https://images.unsplash.com/photo-1690029670479-9fee2fa120eb?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwxMHx8YWJzdHJhY3QlMjBuZXR3b3JrfGVufDB8fHx8MTc2ODAzNDQwOHww&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "abstract network"
+    },
+    {
+      "id": "student-1",
+      "description": "Portrait of a female student",
+      "imageUrl": "https://images.unsplash.com/photo-1610655507808-a59293f4e332?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw1fHx3b21hbiUyMHBvcnRyYWl0fGVufDB8fHx8MTc2ODEyMTYxNXww&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "woman portrait"
+    },
+    {
+      "id": "student-2",
+      "description": "Portrait of a male student",
+      "imageUrl": "https://images.unsplash.com/photo-1568602471122-7832951cc4c5?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw2fHxtYW4lMjBwb3J0cmFpdHxlbnwwfHx8fDE3NjgxMjY3MzJ8MA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "man portrait"
+    },
+    {
+      "id": "student-3",
+      "description": "Portrait of a student",
+      "imageUrl": "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwzfHxwZXJzb24lMjBwb3J0cmFpdHxlbnwwfHx8fDE3NjgxMTI1NjR8MA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "person portrait"
+    },
+    {
+      "id": "student-4",
+      "description": "Portrait of a student with glasses",
+      "imageUrl": "https://images.unsplash.com/flagged/photo-1579657751995-516aecec2f8b?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwxMHx8cGVyc29uJTIwZ2xhc3Nlc3xlbnwwfHx8fDE3NjgwNDAxODh8MA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "person glasses"
+    }
+  ]
 }
