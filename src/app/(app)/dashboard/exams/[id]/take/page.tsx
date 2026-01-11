@@ -1,15 +1,20 @@
+'use client';
 import { mockExams, mockUsers } from "@/lib/mock-data";
 import { notFound } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
-import { Timer, Video, ShieldAlert } from 'lucide-react';
+import { Timer } from 'lucide-react';
 import { ProctoringHandler } from '@/components/exam/proctoring-handler';
+import { WebcamFeed } from "@/components/exam/webcam-feed";
+import { useState, useRef } from "react";
 
 export default function ExamTakePage({ params }: { params: { id: string } }) {
   const exam = mockExams.find((e) => e.id === params.id);
   const student = mockUsers.find(u => u.role === 'student');
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const [isCameraReady, setIsCameraReady] = useState(false);
 
   if (!exam || !student) {
     notFound();
@@ -56,20 +61,14 @@ export default function ExamTakePage({ params }: { params: { id: string } }) {
       </div>
 
       <aside className="w-80 border-l bg-background p-6 flex flex-col gap-6">
-        <Card>
-          <CardHeader className="flex-row items-center gap-2 space-y-0">
-            <Video className="w-5 h-5 text-primary"/>
-            <CardTitle className="text-lg">Webcam Feed</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="aspect-video bg-muted-foreground/20 rounded-md flex items-center justify-center">
-              <Video className="w-12 h-12 text-muted-foreground/50"/>
-            </div>
-             <p className="text-xs text-muted-foreground mt-2 text-center">Webcam access is mandatory.</p>
-          </CardContent>
-        </Card>
+        <WebcamFeed videoRef={videoRef} onReady={setIsCameraReady} />
         
-        <ProctoringHandler studentId={student.id} examId={exam.id} />
+        <ProctoringHandler 
+          studentId={student.id} 
+          examId={exam.id}
+          videoRef={videoRef}
+          enabled={isCameraReady}
+        />
         
       </aside>
     </div>

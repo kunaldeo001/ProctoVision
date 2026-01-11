@@ -3,8 +3,9 @@ import { notFound } from "next/navigation";
 import { MonitorGrid } from "@/components/monitor/monitor-grid";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { FileText, Power } from "lucide-react";
+import { Power } from "lucide-react";
 import type { User } from "@/lib/types";
+import { ReportGenerator } from "@/components/monitor/report-generator";
 
 export default function ExamMonitorPage({ params }: { params: { id: string } }) {
   const exam = mockExams.find((e) => e.id === params.id);
@@ -28,9 +29,7 @@ export default function ExamMonitorPage({ params }: { params: { id: string } }) 
           </div>
         </div>
         <div className="flex items-center space-x-2">
-           <Button variant="outline">
-            <FileText className="mr-2 h-4 w-4" /> Generate Report
-          </Button>
+           <ReportGenerator exam={exam} />
           <Button variant="destructive">
             <Power className="mr-2 h-4 w-4" /> End Exam
           </Button>

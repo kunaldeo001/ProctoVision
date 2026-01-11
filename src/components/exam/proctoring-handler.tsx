@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ShieldAlert, AlertTriangle, CheckCircle } from 'lucide-react';
 import { Progress } from '@/components/ui/progress';
@@ -8,20 +8,11 @@ import type { MalpracticeEvent, RiskLevel } from '@/lib/types';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
 import { formatDistanceToNow } from 'date-fns';
-
-const MALPRACTICE_WEIGHTS = {
-  'No Face Detected': 20,
-  'Multiple People': 30,
-  'Gaze Away': 10,
-  'Phone Detected': 40,
-  'Tab Switch': 15,
-};
-
-const VIOLATION_TYPES = Object.keys(MALPRACTICE_WEIGHTS) as (keyof typeof MALPRACTICE_WEIGHTS)[];
+import { detectExamMalpractice } from '@/ai/flows/detect-exam-malpractice';
 
 const getRiskLevel = (score: number): RiskLevel => {
-  if (score >= 60) return 'High';
-  if (score >= 25) return 'Medium';
+  if (score >= 40) return 'High';
+  if (score >= 20) return 'Medium';
   return 'Low';
 };
 
@@ -31,30 +22,70 @@ const riskStyles: Record<RiskLevel, { icon: React.ReactNode, color: string, text
   High: { icon: <ShieldAlert className="w-5 h-5" />, color: 'text-red-500', text: 'High risk of malpractice detected.' },
 };
 
-export function ProctoringHandler({ studentId, examId }: { studentId: string; examId: string }) {
+export function ProctoringHandler({ 
+  studentId, 
+  examId,
+  videoRef,
+  enabled
+}: { 
+  studentId: string; 
+  examId: string;
+  videoRef: React.RefObject<HTMLVideoElement>;
+  enabled: boolean;
+}) {
   const [events, setEvents] = useState<MalpracticeEvent[]>([]);
   const [totalScore, setTotalScore] = useState(0);
   const [riskLevel, setRiskLevel] = useState<RiskLevel>('Low');
+  const [isProcessing, setIsProcessing] = useState(false);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
 
   useEffect(() => {
-    const interval = setInterval(() => {
-      // Simulate a random malpractice event
-      if (Math.random() > 0.7) {
-        const type = VIOLATION_TYPES[Math.floor(Math.random() * VIOLATION_TYPES.length)];
-        const newEvent: MalpracticeEvent = {
-          id: `evt-${Date.now()}`,
-          studentId,
-          examId,
-          type,
-          score: MALPRACTICE_WEIGHTS[type],
-          timestamp: Date.now(),
-        };
-        setEvents(prev => [newEvent, ...prev]);
-      }
-    }, 5000); // Check every 5 seconds
+    if (!enabled || !videoRef.current) return;
 
+    const processFrame = async () => {
+      if (isProcessing || !videoRef.current || videoRef.current.readyState < 2) {
+        return;
+      }
+      setIsProcessing(true);
+
+      const canvas = canvasRef.current || document.createElement('canvas');
+      if (!canvasRef.current) {
+        (canvasRef as any).current = canvas;
+      }
+
+      canvas.width = videoRef.current.videoWidth;
+      canvas.height = videoRef.current.videoHeight;
+      const context = canvas.getContext('2d');
+      if (!context) {
+        setIsProcessing(false);
+        return;
+      }
+      context.drawImage(videoRef.current, 0, 0, canvas.width, canvas.height);
+      const photoDataUri = canvas.toDataURL('image/jpeg');
+
+      try {
+        const result = await detectExamMalpractice({ photoDataUri });
+        
+        const newEvents: MalpracticeEvent[] = [];
+        if(result.noFaceDetected) newEvents.push({id: `evt-${Date.now()}-1`, studentId, examId, type: 'No Face Detected', score: 20, timestamp: Date.now() });
+        if(result.multiplePeopleDetected) newEvents.push({id: `evt-${Date.now()}-2`, studentId, examId, type: 'Multiple People', score: 30, timestamp: Date.now() });
+        if(result.gazeAwayFromScreen) newEvents.push({id: `evt-${Date.now()}-3`, studentId, examId, type: 'Gaze Away', score: 10, timestamp: Date.now() });
+        if(result.phoneDetected) newEvents.push({id: `evt-${Date.now()}-4`, studentId, examId, type: 'Phone Detected', score: 40, timestamp: Date.now() });
+
+        if (newEvents.length > 0) {
+          setEvents(prev => [...newEvents, ...prev]);
+        }
+      } catch (error) {
+        console.error("Error detecting malpractice:", error);
+      } finally {
+        setIsProcessing(false);
+      }
+    };
+
+    const interval = setInterval(processFrame, 5000); // Check every 5 seconds
     return () => clearInterval(interval);
-  }, [studentId, examId]);
+
+  }, [enabled, videoRef, isProcessing, studentId, examId]);
 
   useEffect(() => {
     const newTotalScore = events.reduce((sum, event) => sum + event.score, 0);
@@ -76,7 +107,7 @@ export function ProctoringHandler({ studentId, examId }: { studentId: string; ex
             {currentRiskStyle.icon}
             <span>{riskLevel} Risk</span>
           </div>
-          <p className="text-xs text-muted-foreground">{currentRiskStyle.text}</p>
+          <p className="text-xs text-muted-foreground">{isProcessing ? 'Analyzing...' : currentRiskStyle.text}</p>
           <div className="space-y-1">
             <Progress value={Math.min(totalScore, 100)} className="h-2" />
             <p className="text-sm font-medium">Malpractice Score: {totalScore}</p>
