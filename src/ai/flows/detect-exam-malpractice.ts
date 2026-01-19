@@ -42,17 +42,17 @@ const detectExamMalpracticePrompt = ai.definePrompt({
   name: 'detectExamMalpracticePrompt',
   input: {schema: DetectExamMalpracticeInputSchema},
   output: {schema: DetectExamMalpracticeOutputSchema},
-  prompt: `You are an AI proctoring system analyzing a student's webcam feed during an exam.
+  prompt: `You are an AI proctoring system for online exams. Your primary task is to analyze a student's webcam feed for signs of academic dishonesty.
 
-  Analyze the provided webcam feed and determine if any of the following suspicious behaviors are present:
-  - Is there more than one person in the frame?
-  - Is a mobile phone visible?
-  - Is the student looking away from the screen for an extended period?
-  - Is there no face clearly visible in the frame?
+  Carefully examine the provided image from the student's webcam. Your analysis should focus on detecting the following specific violations:
+  - **Phone Detection**: Is there any evidence of a mobile phone or any other handheld electronic device in the student's hands, on the desk, or anywhere else in the camera's view? The student should not be using a phone.
+  - **Multiple People**: Is there more than one person visible in the frame? Only the student should be present.
+  - **Gaze Detection**: Is the student looking away from the computer screen for a suspicious amount of time, as if looking at notes or another person?
+  - **Face Presence**: Is the student's face clearly visible in the frame? The student must be in front of the camera.
 
   Webcam Feed: {{media url=photoDataUri}}
 
-  Based on your analysis, return a boolean value for each of the following fields: multiplePeopleDetected, phoneDetected, gazeAwayFromScreen, and noFaceDetected.
+  Return a boolean value for each of the following fields based on your analysis: phoneDetected, multiplePeopleDetected, gazeAwayFromScreen, noFaceDetected.
 `,
 });
 
