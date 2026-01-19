@@ -46,14 +46,16 @@ export function ProctoringHandler({
   const [riskLevel, setRiskLevel] = useState<RiskLevel>('Low');
   const [isProcessing, setIsProcessing] = useState(false);
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const isProcessingRef = useRef(false); // Ref to prevent concurrent processing
 
   useEffect(() => {
     if (!enabled || !videoRef.current) return;
 
     const processFrame = async () => {
-      if (isProcessing || !videoRef.current || videoRef.current.readyState < 2) {
+      if (isProcessingRef.current || !videoRef.current || videoRef.current.readyState < 2 || videoRef.current.videoWidth === 0) {
         return;
       }
+      isProcessingRef.current = true;
       setIsProcessing(true);
 
       const canvas = canvasRef.current || document.createElement('canvas');
@@ -65,6 +67,7 @@ export function ProctoringHandler({
       canvas.height = videoRef.current.videoHeight;
       const context = canvas.getContext('2d');
       if (!context) {
+        isProcessingRef.current = false;
         setIsProcessing(false);
         return;
       }
@@ -91,6 +94,7 @@ export function ProctoringHandler({
       } catch (error) {
         console.error("Error detecting malpractice:", error);
       } finally {
+        isProcessingRef.current = false;
         setIsProcessing(false);
       }
     };
@@ -103,7 +107,7 @@ export function ProctoringHandler({
         }
     };
 
-  }, [enabled, videoRef, isProcessing, studentId, examId, onDetectionUpdate]);
+  }, [enabled, videoRef, studentId, examId, onDetectionUpdate]);
 
   useEffect(() => {
     const newTotalScore = events.reduce((sum, event) => sum + event.score, 0);

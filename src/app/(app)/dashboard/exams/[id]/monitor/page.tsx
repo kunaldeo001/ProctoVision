@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Power } from "lucide-react";
 import type { User, StudentSession } from "@/lib/types";
 import { ReportGenerator } from "@/components/monitor/report-generator";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import type { MalpracticeEvent, RiskLevel } from '@/lib/types';
 
 const MALPRACTICE_WEIGHTS = {
@@ -47,9 +47,9 @@ export default function ExamMonitorPage({ params }: { params: { id: string } }) 
     notFound();
   }
   
-  const students = exam.studentIds
+  const students = useMemo(() => exam.studentIds
     .map(id => mockUsers.find(u => u.id === id))
-    .filter((u): u is User => u !== undefined);
+    .filter((u): u is User => u !== undefined), [exam.studentIds]);
 
   useEffect(() => {
     const interval = setInterval(() => {
