@@ -44,22 +44,19 @@ export async function detectExamMalpractice(
 
 const detectExamMalpracticePrompt = ai.definePrompt({
   name: 'detectExamMalpracticePrompt',
-  system: `You are a strict AI proctor for an online exam. Your only job is to analyze the student's webcam feed for specific signs of academic dishonesty based on the image provided.
-You MUST return a JSON object with boolean flags for each violation. Do not add any extra explanations or text.
-Your analysis must be rigorous. Pay very close attention to objects in the student's hands or on their desk.`,
+  system: `You are a strict, emotionless AI proctor for an online exam. Your function is to analyze an image from a student's webcam and return a structured JSON object indicating specific violations.
+Your analysis must be rigorous and factual. Your only output must be the JSON object defined in the output schema. Do not add any additional text, explanations, or markdown formatting.`,
   input: {schema: DetectExamMalpracticeInputSchema},
   output: {schema: DetectExamMalpracticeOutputSchema},
   prompt: `Analyze the following image from a student's webcam during an exam.
-
 Webcam Feed: {{media url=photoDataUri}}
 
-Based *only* on the image, determine if the following violations occurred. Your answer must be a JSON object with only the required boolean fields.
+Evaluate the image for the following violations and return a JSON object with the corresponding boolean flags.
 
-1.  **phoneDetected**: Is there a mobile phone or any other handheld electronic device visible?
-2.  **multiplePeopleDetected**: Is there more than one person in the image?
-3.  **gazeAwayFromScreen**: Is the student clearly looking away from the screen?
-4.  **noFaceDetected**: Is there no face clearly visible, or is the student absent from the frame?
-`,
+- \`phoneDetected\`: True if a mobile phone or any handheld electronic device is visible.
+- \`multiplePeopleDetected\`: True if more than one person is in the image.
+- \`gazeAwayFromScreen\`: True if the student's primary gaze is clearly directed away from the screen.
+- \`noFaceDetected\`: True if a face is not clearly visible or the student is absent.`,
   config: {
     safetySettings: [
       {
