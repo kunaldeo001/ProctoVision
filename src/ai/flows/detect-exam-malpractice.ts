@@ -23,12 +23,16 @@ export type DetectExamMalpracticeInput = z.infer<typeof DetectExamMalpracticeInp
 const DetectExamMalpracticeOutputSchema = z.object({
   multiplePeopleDetected: z
     .boolean()
-    .describe('Whether multiple people are detected in the webcam view.'),
-  phoneDetected: z.boolean().describe('Whether a mobile phone is detected in the webcam view.'),
+    .describe('True if more than one person is visible in the frame. Only the student should be present.'),
+  phoneDetected: z
+    .boolean()
+    .describe('True if any evidence of a mobile phone or other handheld electronic device is found. The student should not be using a phone.'),
   gazeAwayFromScreen: z
     .boolean()
-    .describe('Whether the student is looking away from the screen.'),
-  noFaceDetected: z.boolean().describe('Whether a face is detected in the webcam view.'),
+    .describe('True if the student is looking away from the screen, as if at notes or another person.'),
+  noFaceDetected: z
+    .boolean()
+    .describe("True if the student's face is not clearly visible in the frame. The student must be in front of the camera."),
 });
 export type DetectExamMalpracticeOutput = z.infer<typeof DetectExamMalpracticeOutputSchema>;
 
@@ -40,20 +44,42 @@ export async function detectExamMalpractice(
 
 const detectExamMalpracticePrompt = ai.definePrompt({
   name: 'detectExamMalpracticePrompt',
+  system: `You are a strict AI proctor for an online exam. Your only job is to analyze the student's webcam feed for specific signs of academic dishonesty based on the image provided.
+You MUST return a JSON object with boolean flags for each violation. Do not add any extra explanations or text.
+Your analysis must be rigorous. Pay very close attention to objects in the student's hands or on their desk.`,
   input: {schema: DetectExamMalpracticeInputSchema},
   output: {schema: DetectExamMalpracticeOutputSchema},
-  prompt: `You are an AI proctoring system for online exams. Your primary task is to analyze a student's webcam feed for signs of academic dishonesty.
+  prompt: `Analyze the following image from a student's webcam during an exam.
 
-  Carefully examine the provided image from the student's webcam. Your analysis should focus on detecting the following specific violations:
-  - **Phone Detection**: Is there any evidence of a mobile phone or any other handheld electronic device in the student's hands, on the desk, or anywhere else in the camera's view? The student should not be using a phone.
-  - **Multiple People**: Is there more than one person visible in the frame? Only the student should be present.
-  - **Gaze Detection**: Is the student looking away from the computer screen for a suspicious amount of time, as if looking at notes or another person?
-  - **Face Presence**: Is the student's face clearly visible in the frame? The student must be in front of the camera.
+Webcam Feed: {{media url=photoDataUri}}
 
-  Webcam Feed: {{media url=photoDataUri}}
+Based *only* on the image, determine if the following violations occurred. Your answer must be a JSON object with only the required boolean fields.
 
-  Return a boolean value for each of the following fields based on your analysis: phoneDetected, multiplePeopleDetected, gazeAwayFromScreen, noFaceDetected.
+1.  **phoneDetected**: Is there a mobile phone or any other handheld electronic device visible?
+2.  **multiplePeopleDetected**: Is there more than one person in the image?
+3.  **gazeAwayFromScreen**: Is the student clearly looking away from the screen?
+4.  **noFaceDetected**: Is there no face clearly visible, or is the student absent from the frame?
 `,
+  config: {
+    safetySettings: [
+      {
+        category: 'HARM_CATEGORY_DANGEROUS_CONTENT',
+        threshold: 'BLOCK_NONE',
+      },
+      {
+        category: 'HARM_CATEGORY_HARASSMENT',
+        threshold: 'BLOCK_NONE',
+      },
+      {
+        category: 'HARM_CATEGORY_HATE_SPEECH',
+        threshold: 'BLOCK_NONE',
+      },
+      {
+        category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT',
+        threshold: 'BLOCK_NONE',
+      }
+    ]
+  }
 });
 
 const detectExamMalpracticeFlow = ai.defineFlow(
