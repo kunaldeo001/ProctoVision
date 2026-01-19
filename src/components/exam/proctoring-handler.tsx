@@ -44,6 +44,12 @@ export function ProctoringHandler({
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const isProcessingRef = useRef(false);
 
+  // Use a ref to hold the latest addMalpracticeEvent function to avoid stale closures in setInterval
+  const addMalpracticeEventRef = useRef(addMalpracticeEvent);
+  useEffect(() => {
+    addMalpracticeEventRef.current = addMalpracticeEvent;
+  }, [addMalpracticeEvent]);
+
   useEffect(() => {
     if (!enabled || !videoRef.current) return;
 
@@ -78,10 +84,10 @@ export function ProctoringHandler({
           multiplePeopleDetected: result.multiplePeopleDetected,
         });
 
-        if(result.noFaceDetected) addMalpracticeEvent('No Face Detected', MALPRACTICE_WEIGHTS['No Face Detected']);
-        if(result.multiplePeopleDetected) addMalpracticeEvent('Multiple People', MALPRACTICE_WEIGHTS['Multiple People']);
-        if(result.gazeAwayFromScreen) addMalpracticeEvent('Gaze Away', MALPRACTICE_WEIGHTS['Gaze Away']);
-        if(result.phoneDetected) addMalpracticeEvent('Phone Detected', MALPRACTICE_WEIGHTS['Phone Detected']);
+        if(result.noFaceDetected) addMalpracticeEventRef.current('No Face Detected', MALPRACTICE_WEIGHTS['No Face Detected']);
+        if(result.multiplePeopleDetected) addMalpracticeEventRef.current('Multiple People', MALPRACTICE_WEIGHTS['Multiple People']);
+        if(result.gazeAwayFromScreen) addMalpracticeEventRef.current('Gaze Away', MALPRACTICE_WEIGHTS['Gaze Away']);
+        if(result.phoneDetected) addMalpracticeEventRef.current('Phone Detected', MALPRACTICE_WEIGHTS['Phone Detected']);
 
       } catch (error) {
         console.error("Error detecting malpractice:", error);
@@ -99,7 +105,7 @@ export function ProctoringHandler({
         }
     };
 
-  }, [enabled, videoRef, onDetectionUpdate, addMalpracticeEvent]);
+  }, [enabled, videoRef, onDetectionUpdate]);
 
   const currentRiskStyle = riskStyles[riskLevel];
 
