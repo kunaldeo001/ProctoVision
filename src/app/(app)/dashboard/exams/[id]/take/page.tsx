@@ -21,6 +21,11 @@ export default function ExamTakePage({ params }: { params: { id: string } }) {
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const [timeLeft, setTimeLeft] = useState((exam?.duration || 0) * 60);
   const [showConfirmation, setShowConfirmation] = useState(false);
+  const [proctoringStatus, setProctoringStatus] = useState({
+    noFaceDetected: false,
+    multiplePeopleDetected: false,
+  });
+
 
   useEffect(() => {
     if (!exam) return;
@@ -113,13 +118,18 @@ export default function ExamTakePage({ params }: { params: { id: string } }) {
       </div>
 
       <aside className="w-80 border-l bg-background p-6 flex flex-col gap-6">
-        <WebcamFeed videoRef={videoRef} onReady={setIsCameraReady} />
+        <WebcamFeed 
+          videoRef={videoRef} 
+          onReady={setIsCameraReady}
+          proctoringStatus={proctoringStatus}
+        />
         
         <ProctoringHandler 
           studentId={student.id} 
           examId={exam.id}
           videoRef={videoRef}
           enabled={isCameraReady}
+          onDetectionUpdate={setProctoringStatus}
         />
         
       </aside>

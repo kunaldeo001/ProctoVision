@@ -22,17 +22,25 @@ const riskStyles: Record<RiskLevel, { icon: React.ReactNode, color: string, text
   High: { icon: <ShieldAlert className="w-5 h-5" />, color: 'text-red-500', text: 'High risk of malpractice detected.' },
 };
 
-export function ProctoringHandler({ 
-  studentId, 
-  examId,
-  videoRef,
-  enabled
-}: { 
+type ProctoringHandlerProps = { 
   studentId: string; 
   examId: string;
   videoRef: React.RefObject<HTMLVideoElement>;
   enabled: boolean;
-}) {
+  onDetectionUpdate: (status: {
+    noFaceDetected: boolean;
+    multiplePeopleDetected: boolean;
+  }) => void;
+};
+
+
+export function ProctoringHandler({ 
+  studentId, 
+  examId,
+  videoRef,
+  enabled,
+  onDetectionUpdate
+}: ProctoringHandlerProps) {
   const [events, setEvents] = useState<MalpracticeEvent[]>([]);
   const [totalScore, setTotalScore] = useState(0);
   const [riskLevel, setRiskLevel] = useState<RiskLevel>('Low');
@@ -66,6 +74,11 @@ export function ProctoringHandler({
       try {
         const result = await detectExamMalpractice({ photoDataUri });
         
+        onDetectionUpdate({
+          noFaceDetected: result.noFaceDetected,
+          multiplePeopleDetected: result.multiplePeopleDetected,
+        });
+
         const newEvents: MalpracticeEvent[] = [];
         if(result.noFaceDetected) newEvents.push({id: `evt-${Date.now()}-1`, studentId, examId, type: 'No Face Detected', score: 20, timestamp: Date.now() });
         if(result.multiplePeopleDetected) newEvents.push({id: `evt-${Date.now()}-2`, studentId, examId, type: 'Multiple People', score: 30, timestamp: Date.now() });
@@ -83,9 +96,14 @@ export function ProctoringHandler({
     };
 
     const interval = setInterval(processFrame, 5000); // Check every 5 seconds
-    return () => clearInterval(interval);
+    return () => {
+        clearInterval(interval);
+        if (onDetectionUpdate) {
+            onDetectionUpdate({ noFaceDetected: false, multiplePeopleDetected: false });
+        }
+    };
 
-  }, [enabled, videoRef, isProcessing, studentId, examId]);
+  }, [enabled, videoRef, isProcessing, studentId, examId, onDetectionUpdate]);
 
   useEffect(() => {
     const newTotalScore = events.reduce((sum, event) => sum + event.score, 0);
