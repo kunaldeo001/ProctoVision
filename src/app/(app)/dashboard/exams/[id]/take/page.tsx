@@ -8,8 +8,10 @@ import { Button } from "@/components/ui/button";
 import { Timer } from 'lucide-react';
 import { ProctoringHandler } from '@/components/exam/proctoring-handler';
 import { WebcamFeed } from "@/components/exam/webcam-feed";
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { AlertDialog, AlertDialogAction, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import type { MalpracticeEvent, RiskLevel } from "@/lib/types";
+import { getRiskLevel, MALPRACTICE_WEIGHTS } from "@/lib/proctoring";
 
 export default function ExamTakePage({ params }: { params: { id: string } }) {
   const router = useRouter();
@@ -21,10 +23,33 @@ export default function ExamTakePage({ params }: { params: { id: string } }) {
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const [timeLeft, setTimeLeft] = useState((exam?.duration || 0) * 60);
   const [showConfirmation, setShowConfirmation] = useState(false);
+  
   const [proctoringStatus, setProctoringStatus] = useState({
     noFaceDetected: false,
     multiplePeopleDetected: false,
   });
+  const [malpracticeEvents, setMalpracticeEvents] = useState<MalpracticeEvent[]>([]);
+  const [totalScore, setTotalScore] = useState(0);
+  const [riskLevel, setRiskLevel] = useState<RiskLevel>('Low');
+
+  const addMalpracticeEvent = useCallback((type: MalpracticeEvent['type'], score: number) => {
+    if (!student || !exam) return;
+    const newEvent: MalpracticeEvent = {
+      id: `evt-${Date.now()}-${Math.random()}`,
+      studentId: student.id,
+      examId: exam.id,
+      type,
+      score,
+      timestamp: Date.now(),
+    };
+    setMalpracticeEvents(prev => [newEvent, ...prev]);
+  }, [student, exam]);
+
+  useEffect(() => {
+    const newTotalScore = malpracticeEvents.reduce((sum, event) => sum + event.score, 0);
+    setTotalScore(newTotalScore);
+    setRiskLevel(getRiskLevel(newTotalScore));
+  }, [malpracticeEvents]);
 
 
   useEffect(() => {
@@ -33,7 +58,6 @@ export default function ExamTakePage({ params }: { params: { id: string } }) {
       setTimeLeft(prev => {
         if (prev <= 1) {
           clearInterval(timer);
-          // Auto-submit logic can be added here
           setShowConfirmation(true);
           return 0;
         }
@@ -42,6 +66,18 @@ export default function ExamTakePage({ params }: { params: { id: string } }) {
     }, 1000);
     return () => clearInterval(timer);
   }, [exam]);
+
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.hidden) {
+        addMalpracticeEvent('Tab Switch', MALPRACTICE_WEIGHTS['Tab Switch']);
+      }
+    };
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    return () => {
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+    };
+  }, [addMalpracticeEvent]);
 
 
   if (!exam || !student) {
@@ -68,8 +104,7 @@ export default function ExamTakePage({ params }: { params: { id: string } }) {
 
   const handleSubmit = () => {
     setShowConfirmation(false);
-    // Here you would typically save the answers
-    console.log("Exam submitted", answers);
+    console.log("Exam submitted", answers, malpracticeEvents);
     router.push('/dashboard');
   };
 
@@ -125,11 +160,13 @@ export default function ExamTakePage({ params }: { params: { id: string } }) {
         />
         
         <ProctoringHandler 
-          studentId={student.id} 
-          examId={exam.id}
           videoRef={videoRef}
           enabled={isCameraReady}
           onDetectionUpdate={setProctoringStatus}
+          addMalpracticeEvent={addMalpracticeEvent}
+          events={malpracticeEvents}
+          totalScore={totalScore}
+          riskLevel={riskLevel}
         />
         
       </aside>

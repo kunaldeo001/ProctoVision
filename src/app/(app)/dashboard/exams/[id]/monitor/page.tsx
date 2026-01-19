@@ -10,21 +10,9 @@ import type { User, StudentSession } from "@/lib/types";
 import { ReportGenerator } from "@/components/monitor/report-generator";
 import { useState, useEffect, useMemo } from "react";
 import type { MalpracticeEvent, RiskLevel } from '@/lib/types';
+import { MALPRACTICE_WEIGHTS, getRiskLevel } from "@/lib/proctoring";
 
-const MALPRACTICE_WEIGHTS = {
-  'No Face Detected': 20,
-  'Multiple People': 30,
-  'Gaze Away': 10,
-  'Phone Detected': 40,
-  'Tab Switch': 15,
-};
 const VIOLATION_TYPES = Object.keys(MALPRACTICE_WEIGHTS) as (keyof typeof MALPRACTICE_WEIGHTS)[];
-
-const getRiskLevel = (score: number): RiskLevel => {
-  if (score >= 60) return 'High';
-  if (score >= 25) return 'Medium';
-  return 'Low';
-};
 
 export default function ExamMonitorPage({ params }: { params: { id: string } }) {
   const exam = mockExams.find((e) => e.id === params.id);
@@ -66,7 +54,7 @@ export default function ExamMonitorPage({ params }: { params: { id: string } }) 
             id: `evt-${Date.now()}`,
             studentId,
             examId: exam.id,
-            type,
+            type: type as MalpracticeEvent['type'],
             score: MALPRACTICE_WEIGHTS[type],
             timestamp: Date.now(),
           };

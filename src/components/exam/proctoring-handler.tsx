@@ -9,12 +9,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
 import { formatDistanceToNow } from 'date-fns';
 import { detectExamMalpractice } from '@/ai/flows/detect-exam-malpractice';
-
-const getRiskLevel = (score: number): RiskLevel => {
-  if (score >= 40) return 'High';
-  if (score >= 20) return 'Medium';
-  return 'Low';
-};
+import { MALPRACTICE_WEIGHTS } from '@/lib/proctoring';
 
 const riskStyles: Record<RiskLevel, { icon: React.ReactNode, color: string, text: string }> = {
   Low: { icon: <CheckCircle className="w-5 h-5" />, color: 'text-green-500', text: 'No significant issues detected.' },
@@ -23,30 +18,31 @@ const riskStyles: Record<RiskLevel, { icon: React.ReactNode, color: string, text
 };
 
 type ProctoringHandlerProps = { 
-  studentId: string; 
-  examId: string;
   videoRef: React.RefObject<HTMLVideoElement>;
   enabled: boolean;
   onDetectionUpdate: (status: {
     noFaceDetected: boolean;
     multiplePeopleDetected: boolean;
   }) => void;
+  addMalpracticeEvent: (type: MalpracticeEvent['type'], score: number) => void;
+  events: MalpracticeEvent[];
+  totalScore: number;
+  riskLevel: RiskLevel;
 };
 
 
 export function ProctoringHandler({ 
-  studentId, 
-  examId,
   videoRef,
   enabled,
-  onDetectionUpdate
+  onDetectionUpdate,
+  addMalpracticeEvent,
+  events,
+  totalScore,
+  riskLevel
 }: ProctoringHandlerProps) {
-  const [events, setEvents] = useState<MalpracticeEvent[]>([]);
-  const [totalScore, setTotalScore] = useState(0);
-  const [riskLevel, setRiskLevel] = useState<RiskLevel>('Low');
   const [isProcessing, setIsProcessing] = useState(false);
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const isProcessingRef = useRef(false); // Ref to prevent concurrent processing
+  const isProcessingRef = useRef(false);
 
   useEffect(() => {
     if (!enabled || !videoRef.current) return;
@@ -82,15 +78,11 @@ export function ProctoringHandler({
           multiplePeopleDetected: result.multiplePeopleDetected,
         });
 
-        const newEvents: MalpracticeEvent[] = [];
-        if(result.noFaceDetected) newEvents.push({id: `evt-${Date.now()}-1`, studentId, examId, type: 'No Face Detected', score: 20, timestamp: Date.now() });
-        if(result.multiplePeopleDetected) newEvents.push({id: `evt-${Date.now()}-2`, studentId, examId, type: 'Multiple People', score: 30, timestamp: Date.now() });
-        if(result.gazeAwayFromScreen) newEvents.push({id: `evt-${Date.now()}-3`, studentId, examId, type: 'Gaze Away', score: 10, timestamp: Date.now() });
-        if(result.phoneDetected) newEvents.push({id: `evt-${Date.now()}-4`, studentId, examId, type: 'Phone Detected', score: 40, timestamp: Date.now() });
+        if(result.noFaceDetected) addMalpracticeEvent('No Face Detected', MALPRACTICE_WEIGHTS['No Face Detected']);
+        if(result.multiplePeopleDetected) addMalpracticeEvent('Multiple People', MALPRACTICE_WEIGHTS['Multiple People']);
+        if(result.gazeAwayFromScreen) addMalpracticeEvent('Gaze Away', MALPRACTICE_WEIGHTS['Gaze Away']);
+        if(result.phoneDetected) addMalpracticeEvent('Phone Detected', MALPRACTICE_WEIGHTS['Phone Detected']);
 
-        if (newEvents.length > 0) {
-          setEvents(prev => [...newEvents, ...prev]);
-        }
       } catch (error) {
         console.error("Error detecting malpractice:", error);
       } finally {
@@ -107,13 +99,7 @@ export function ProctoringHandler({
         }
     };
 
-  }, [enabled, videoRef, studentId, examId, onDetectionUpdate]);
-
-  useEffect(() => {
-    const newTotalScore = events.reduce((sum, event) => sum + event.score, 0);
-    setTotalScore(newTotalScore);
-    setRiskLevel(getRiskLevel(newTotalScore));
-  }, [events]);
+  }, [enabled, videoRef, onDetectionUpdate, addMalpracticeEvent]);
 
   const currentRiskStyle = riskStyles[riskLevel];
 
