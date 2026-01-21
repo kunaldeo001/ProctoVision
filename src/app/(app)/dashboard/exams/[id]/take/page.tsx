@@ -1,6 +1,6 @@
 'use client';
 import { mockExams, mockUsers } from "@/lib/mock-data";
-import { notFound, useRouter } from "next/navigation";
+import { notFound, useRouter, useParams } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
@@ -13,8 +13,9 @@ import { AlertDialog, AlertDialogAction, AlertDialogContent, AlertDialogDescript
 import type { MalpracticeEvent, RiskLevel } from "@/lib/types";
 import { getRiskLevel, MALPRACTICE_WEIGHTS } from "@/lib/proctoring";
 
-export default function ExamTakePage({ params }: { params: { id: string } }) {
+export default function ExamTakePage() {
   const router = useRouter();
+  const params = useParams<{ id: string }>();
   const exam = mockExams.find((e) => e.id === params.id);
   const student = mockUsers.find(u => u.role === 'student');
   const videoRef = useRef<HTMLVideoElement>(null);

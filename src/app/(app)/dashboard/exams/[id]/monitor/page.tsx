@@ -1,7 +1,7 @@
 'use client';
 
 import { mockExams, mockUsers } from "@/lib/mock-data";
-import { notFound } from "next/navigation";
+import { notFound, useParams } from "next/navigation";
 import { MonitorGrid } from "@/components/monitor/monitor-grid";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -14,7 +14,8 @@ import { MALPRACTICE_WEIGHTS, getRiskLevel } from "@/lib/proctoring";
 
 const VIOLATION_TYPES = Object.keys(MALPRACTICE_WEIGHTS) as (keyof typeof MALPRACTICE_WEIGHTS)[];
 
-export default function ExamMonitorPage({ params }: { params: { id: string } }) {
+export default function ExamMonitorPage() {
+  const params = useParams<{ id: string }>();
   const exam = mockExams.find((e) => e.id === params.id);
   const [sessions, setSessions] = useState<Record<string, StudentSession>>(() => {
     const initialSessions: Record<string, StudentSession> = {};
