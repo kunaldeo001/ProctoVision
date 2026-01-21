@@ -24,9 +24,9 @@ const DetectExamMalpracticeOutputSchema = z.object({
   multiplePeopleDetected: z
     .boolean()
     .describe('True if more than one person is visible in the frame. Only the student should be present.'),
-  suspiciousObjects: z
+  forbiddenObjects: z
     .array(z.string())
-    .describe('A list of keywords for any suspicious objects detected in the frame, such as "phone", "book", "notes".'),
+    .describe('A list of keywords for any forbidden objects detected in the frame, such as "phone", "book", "notes".'),
   gazeAwayFromScreen: z
     .boolean()
     .describe('True if the student is looking away from the screen, as if at notes or another person.'),
@@ -44,12 +44,12 @@ export async function detectExamMalpractice(
 
 const detectExamMalpracticePrompt = ai.definePrompt({
   name: 'detectExamMalpracticePrompt',
-  system: `You are a strict, emotionless AI proctoring service. Your function is to analyze an image and return a JSON object. Do not deviate from this format. Your analysis must be factual and based only on the visual evidence.`,
+  system: `You are a strict, emotionless AI proctoring service. Your function is to analyze an image and return a JSON object. Do not deviate from this format. Your analysis must be factual and based only on the visual evidence. Your primary goal is to identify forbidden items. A phone is a major violation.`,
   input: {schema: DetectExamMalpracticeInputSchema},
   output: {schema: DetectExamMalpracticeOutputSchema},
   prompt: `Analyze the image: {{media url=photoDataUri}}.
   Return a JSON object with the following fields, based on your analysis:
-  - "suspiciousObjects": An array of strings listing any suspicious items visible (e.g., "phone", "book", "notes"). If no suspicious items are found, return an empty array.
+  - "forbiddenObjects": An array of strings listing any forbidden items visible (e.g., "phone", "book", "notes"). If a phone is visible, you MUST include "phone" in the array. If no forbidden items are found, return an empty array.
   - "multiplePeopleDetected": true if more than one person is visible, otherwise false.
   - "gazeAwayFromScreen": true if the primary subject's eyes are not looking towards the camera, otherwise false.
   - "noFaceDetected": true if no human face is clearly visible, otherwise false.`,

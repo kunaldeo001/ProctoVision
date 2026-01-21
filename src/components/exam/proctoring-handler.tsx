@@ -87,7 +87,7 @@ export function ProctoringHandler({
         if(result.noFaceDetected) addMalpracticeEventRef.current('No Face Detected', MALPRACTICE_WEIGHTS['No Face Detected']);
         if(result.multiplePeopleDetected) addMalpracticeEventRef.current('Multiple People', MALPRACTICE_WEIGHTS['Multiple People']);
         if(result.gazeAwayFromScreen) addMalpracticeEventRef.current('Gaze Away', MALPRACTICE_WEIGHTS['Gaze Away']);
-        if (result.suspiciousObjects.some(obj => obj.toLowerCase().includes('phone'))) {
+        if (result.forbiddenObjects.some(obj => obj.toLowerCase().includes('phone'))) {
           addMalpracticeEventRef.current('Phone Detected', MALPRACTICE_WEIGHTS['Phone Detected']);
         }
 
