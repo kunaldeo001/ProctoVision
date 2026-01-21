@@ -24,9 +24,9 @@ const DetectExamMalpracticeOutputSchema = z.object({
   multiplePeopleDetected: z
     .boolean()
     .describe('True if more than one person is visible in the frame. Only the student should be present.'),
-  forbiddenObjects: z
+  detectedObjects: z
     .array(z.string())
-    .describe('A list of keywords for any forbidden objects detected in the frame, such as "phone", "book", "notes".'),
+    .describe('A list of objects detected near the student, such as "phone", "book", "notes".'),
   gazeAwayFromScreen: z
     .boolean()
     .describe('True if the student is looking away from the screen, as if at notes or another person.'),
@@ -44,15 +44,15 @@ export async function detectExamMalpractice(
 
 const detectExamMalpracticePrompt = ai.definePrompt({
   name: 'detectExamMalpracticePrompt',
-  system: `You are a strict, emotionless AI proctoring service. Your function is to analyze an image and return a JSON object. Do not deviate from this format. Your analysis must be factual and based only on the visual evidence. Your primary goal is to identify forbidden items. A phone is a major violation.`,
+  system: `You are an AI assistant that analyzes images from a student's webcam during an exam. Your role is to identify potential violations factually and objectively.`,
   input: {schema: DetectExamMalpracticeInputSchema},
   output: {schema: DetectExamMalpracticeOutputSchema},
-  prompt: `Analyze the image: {{media url=photoDataUri}}.
-  Return a JSON object with the following fields, based on your analysis:
-  - "forbiddenObjects": An array of strings listing any forbidden items visible (e.g., "phone", "book", "notes"). If a phone is visible, you MUST include "phone" in the array. If no forbidden items are found, return an empty array.
-  - "multiplePeopleDetected": true if more than one person is visible, otherwise false.
-  - "gazeAwayFromScreen": true if the primary subject's eyes are not looking towards the camera, otherwise false.
-  - "noFaceDetected": true if no human face is clearly visible, otherwise false.`,
+  prompt: `Analyze the image from the webcam: {{media url=photoDataUri}}.
+  Return a JSON object with your analysis.
+  - "detectedObjects": Create a list of keywords for any objects you see in the frame near the student, especially items on their desk or in their hands. Examples: "phone", "book", "notes", "headphones".
+  - "multiplePeopleDetected": Is there more than one person in the image?
+  - "gazeAwayFromScreen": Is the student looking away from the screen?
+  - "noFaceDetected": Is the student's face not clearly visible?`,
   config: {
     safetySettings: [
       {
