@@ -24,9 +24,9 @@ const DetectExamMalpracticeOutputSchema = z.object({
   multiplePeopleDetected: z
     .boolean()
     .describe('True if more than one person is visible in the frame. Only the student should be present.'),
-  phoneDetected: z
-    .boolean()
-    .describe('True if any evidence of a mobile phone or other handheld electronic device is found. The student should not be using a phone.'),
+  suspiciousObjects: z
+    .array(z.string())
+    .describe('A list of keywords for any suspicious objects detected in the frame, such as "phone", "book", "notes".'),
   gazeAwayFromScreen: z
     .boolean()
     .describe('True if the student is looking away from the screen, as if at notes or another person.'),
@@ -48,8 +48,8 @@ const detectExamMalpracticePrompt = ai.definePrompt({
   input: {schema: DetectExamMalpracticeInputSchema},
   output: {schema: DetectExamMalpracticeOutputSchema},
   prompt: `Analyze the image: {{media url=photoDataUri}}.
-  Return a JSON object with the following boolean fields, based on your analysis:
-  - "phoneDetected": true if a mobile phone or similar electronic device is visible, otherwise false.
+  Return a JSON object with the following fields, based on your analysis:
+  - "suspiciousObjects": An array of strings listing any suspicious items visible (e.g., "phone", "book", "notes"). If no suspicious items are found, return an empty array.
   - "multiplePeopleDetected": true if more than one person is visible, otherwise false.
   - "gazeAwayFromScreen": true if the primary subject's eyes are not looking towards the camera, otherwise false.
   - "noFaceDetected": true if no human face is clearly visible, otherwise false.`,
