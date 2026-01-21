@@ -53,7 +53,6 @@ const detectExamMalpracticePrompt = ai.definePrompt({
   - "multiplePeopleDetected": true if more than one person is visible, otherwise false.
   - "gazeAwayFromScreen": true if the primary subject's eyes are not looking towards the camera, otherwise false.
   - "noFaceDetected": true if no human face is clearly visible, otherwise false.`,
-  model: 'googleai/gemini-2.5-pro',
   config: {
     safetySettings: [
       {
