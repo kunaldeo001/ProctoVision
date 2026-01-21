@@ -44,12 +44,11 @@ export async function detectExamMalpractice(
 
 const detectExamMalpracticePrompt = ai.definePrompt({
   name: 'detectExamMalpracticePrompt',
-  system: `You are an expert at analyzing images for specific objects and characteristics. Your ONLY output MUST be a JSON object matching the provided schema. Do not include any other text, explanations, or markdown.`,
+  system: `You are an AI proctor. Your only job is to analyze an image and determine if any of the following violations are present: 'phoneDetected', 'multiplePeopleDetected', 'gazeAwayFromScreen', 'noFaceDetected'. You MUST return a JSON object with boolean values for each violation.`,
   input: {schema: DetectExamMalpracticeInputSchema},
   output: {schema: DetectExamMalpracticeOutputSchema},
-  prompt: `Analyze the image provided via the 'photoDataUri' parameter.
+  prompt: `Analyze the image provided.
 Image: {{media url=photoDataUri}}
-
 Strictly evaluate the following conditions and return the corresponding boolean values in a JSON object:
 - \`phoneDetected\`: Is there a mobile phone or handheld electronic device clearly visible?
 - \`multiplePeopleDetected\`: Are there two or more distinct people in the image?
@@ -73,9 +72,9 @@ Strictly evaluate the following conditions and return the corresponding boolean 
       {
         category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT',
         threshold: 'BLOCK_NONE',
-      }
-    ]
-  }
+      },
+    ],
+  },
 });
 
 const detectExamMalpracticeFlow = ai.defineFlow(
