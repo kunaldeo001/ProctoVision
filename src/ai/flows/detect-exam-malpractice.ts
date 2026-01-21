@@ -57,6 +57,7 @@ Evaluate the image for the following violations and return a JSON object with th
 - \`multiplePeopleDetected\`: True if more than one person is in the image.
 - \`gazeAwayFromScreen\`: True if the student's primary gaze is clearly directed away from the screen.
 - \`noFaceDetected\`: True if a face is not clearly visible or the student is absent.`,
+  model: 'googleai/gemini-2.5-pro',
   config: {
     safetySettings: [
       {
