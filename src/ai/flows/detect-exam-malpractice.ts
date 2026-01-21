@@ -44,19 +44,17 @@ export async function detectExamMalpractice(
 
 const detectExamMalpracticePrompt = ai.definePrompt({
   name: 'detectExamMalpracticePrompt',
-  system: `You are a strict, emotionless AI proctor for an online exam. Your function is to analyze an image from a student's webcam and return a structured JSON object indicating specific violations.
-Your analysis must be rigorous and factual. Your only output must be the JSON object defined in the output schema. Do not add any additional text, explanations, or markdown formatting.`,
+  system: `You are an expert at analyzing images for specific objects and characteristics. Your ONLY output MUST be a JSON object matching the provided schema. Do not include any other text, explanations, or markdown.`,
   input: {schema: DetectExamMalpracticeInputSchema},
   output: {schema: DetectExamMalpracticeOutputSchema},
-  prompt: `Analyze the following image from a student's webcam during an exam.
-Webcam Feed: {{media url=photoDataUri}}
+  prompt: `Analyze the image provided via the 'photoDataUri' parameter.
+Image: {{media url=photoDataUri}}
 
-Evaluate the image for the following violations and return a JSON object with the corresponding boolean flags.
-
-- \`phoneDetected\`: True if a mobile phone or any handheld electronic device is visible.
-- \`multiplePeopleDetected\`: True if more than one person is in the image.
-- \`gazeAwayFromScreen\`: True if the student's primary gaze is clearly directed away from the screen.
-- \`noFaceDetected\`: True if a face is not clearly visible or the student is absent.`,
+Strictly evaluate the following conditions and return the corresponding boolean values in a JSON object:
+- \`phoneDetected\`: Is there a mobile phone or handheld electronic device clearly visible?
+- \`multiplePeopleDetected\`: Are there two or more distinct people in the image?
+- \`gazeAwayFromScreen\`: Is the person's gaze directed significantly away from the camera/screen?
+- \`noFaceDetected\`: Is there no human face clearly visible in the image?`,
   model: 'googleai/gemini-2.5-pro',
   config: {
     safetySettings: [
