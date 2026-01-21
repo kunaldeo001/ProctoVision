@@ -44,16 +44,15 @@ export async function detectExamMalpractice(
 
 const detectExamMalpracticePrompt = ai.definePrompt({
   name: 'detectExamMalpracticePrompt',
-  system: `You are an AI proctor. Your only job is to analyze an image and determine if any of the following violations are present: 'phoneDetected', 'multiplePeopleDetected', 'gazeAwayFromScreen', 'noFaceDetected'. You MUST return a JSON object with boolean values for each violation.`,
+  system: `You are a strict, emotionless AI proctoring service. Your function is to analyze an image and return a JSON object. Do not deviate from this format. Your analysis must be factual and based only on the visual evidence.`,
   input: {schema: DetectExamMalpracticeInputSchema},
   output: {schema: DetectExamMalpracticeOutputSchema},
-  prompt: `Analyze the image provided.
-Image: {{media url=photoDataUri}}
-Strictly evaluate the following conditions and return the corresponding boolean values in a JSON object:
-- \`phoneDetected\`: Is there a mobile phone or handheld electronic device clearly visible?
-- \`multiplePeopleDetected\`: Are there two or more distinct people in the image?
-- \`gazeAwayFromScreen\`: Is the person's gaze directed significantly away from the camera/screen?
-- \`noFaceDetected\`: Is there no human face clearly visible in the image?`,
+  prompt: `Analyze the image: {{media url=photoDataUri}}.
+  Return a JSON object with the following boolean fields, based on your analysis:
+  - "phoneDetected": true if a mobile phone or similar electronic device is visible, otherwise false.
+  - "multiplePeopleDetected": true if more than one person is visible, otherwise false.
+  - "gazeAwayFromScreen": true if the primary subject's eyes are not looking towards the camera, otherwise false.
+  - "noFaceDetected": true if no human face is clearly visible, otherwise false.`,
   model: 'googleai/gemini-2.5-pro',
   config: {
     safetySettings: [
