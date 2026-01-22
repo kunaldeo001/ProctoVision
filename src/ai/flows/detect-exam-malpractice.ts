@@ -21,18 +21,11 @@ const DetectExamMalpracticeInputSchema = z.object({
 export type DetectExamMalpracticeInput = z.infer<typeof DetectExamMalpracticeInputSchema>;
 
 const DetectExamMalpracticeOutputSchema = z.object({
-  multiplePeopleDetected: z
-    .boolean()
-    .describe('True if more than one person is visible in the frame. Only the student should be present.'),
-  detectedObjects: z
+  violations: z
     .array(z.string())
-    .describe('A list of objects detected near the student, such as "phone", "book", "notes".'),
-  gazeAwayFromScreen: z
-    .boolean()
-    .describe('True if the student is looking away from the screen, as if at notes or another person.'),
-  noFaceDetected: z
-    .boolean()
-    .describe("True if the student's face is not clearly visible in the frame. The student must be in front of the camera."),
+    .describe(
+      'A list of detected violations. Possible values can include: "Multiple People", "No Face Detected", "Gaze Away", "Phone Detected".'
+    ),
 });
 export type DetectExamMalpracticeOutput = z.infer<typeof DetectExamMalpracticeOutputSchema>;
 
@@ -44,15 +37,19 @@ export async function detectExamMalpractice(
 
 const detectExamMalpracticePrompt = ai.definePrompt({
   name: 'detectExamMalpracticePrompt',
-  system: `You are an AI assistant that analyzes images from a student's webcam during an exam. Your role is to identify potential violations factually and objectively.`,
+  system: `You are a strict AI proctor. Your task is to analyze an image from a student's webcam during an exam and identify specific violations.`,
   input: {schema: DetectExamMalpracticeInputSchema},
   output: {schema: DetectExamMalpracticeOutputSchema},
-  prompt: `Analyze the image from the webcam: {{media url=photoDataUri}}.
-  Return a JSON object with your analysis.
-  - "detectedObjects": Create a list of keywords for any objects you see in the frame near the student, especially items on their desk or in their hands. Examples: "phone", "book", "notes", "headphones".
-  - "multiplePeopleDetected": Is there more than one person in the image?
-  - "gazeAwayFromScreen": Is the student looking away from the screen?
-  - "noFaceDetected": Is the student's face not clearly visible?`,
+  prompt: `Analyze the image provided: {{media url=photoDataUri}}.
+
+  Identify all violations from the following categories and return them as a list of strings in the "violations" field.
+  
+  - "Multiple People": Include this if more than one person is visible in the frame.
+  - "No Face Detected": Include this if the student's face is not clearly visible in the frame.
+  - "Gaze Away": Include this if the student appears to be looking away from the screen.
+  - "Phone Detected": Include this if a smartphone or any handheld electronic device is visible.
+  
+  If no violations are found, return an empty array.`,
   config: {
     safetySettings: [
       {

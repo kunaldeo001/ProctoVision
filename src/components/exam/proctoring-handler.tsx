@@ -80,18 +80,23 @@ export function ProctoringHandler({
       try {
         const result = await detectExamMalpractice({ photoDataUri });
         
+        const violations = new Set(result.violations || []);
+        
+        // Update the UI overlay status
         onDetectionUpdate({
-          noFaceDetected: result.noFaceDetected,
-          multiplePeopleDetected: result.multiplePeopleDetected,
-          detectedObjects: result.detectedObjects,
+          noFaceDetected: violations.has('No Face Detected'),
+          multiplePeopleDetected: violations.has('Multiple People'),
+          detectedObjects: violations.has('Phone Detected') ? ['phone'] : [],
         });
 
-        if(result.noFaceDetected) addMalpracticeEventRef.current('No Face Detected', MALPRACTICE_WEIGHTS['No Face Detected']);
-        if(result.multiplePeopleDetected) addMalpracticeEventRef.current('Multiple People', MALPRACTICE_WEIGHTS['Multiple People']);
-        if(result.gazeAwayFromScreen) addMalpracticeEventRef.current('Gaze Away', MALPRACTICE_WEIGHTS['Gaze Away']);
-        if (result.detectedObjects.some(obj => obj.toLowerCase().includes('phone'))) {
-          addMalpracticeEventRef.current('Phone Detected', MALPRACTICE_WEIGHTS['Phone Detected']);
-        }
+        // Add malpractice events for each detected violation
+        violations.forEach(violation => {
+          // Ensure the violation string is a valid type
+          const violationType = violation as MalpracticeEvent['type'];
+          if (Object.keys(MALPRACTICE_WEIGHTS).includes(violationType)) {
+            addMalpracticeEventRef.current(violationType, MALPRACTICE_WEIGHTS[violationType]);
+          }
+        });
 
       } catch (error) {
         console.error("Error detecting malpractice:", error);
