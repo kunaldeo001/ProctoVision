@@ -23,6 +23,7 @@ type ProctoringHandlerProps = {
   onDetectionUpdate: (status: {
     noFaceDetected: boolean;
     multiplePeopleDetected: boolean;
+    detectedObjects: string[];
   }) => void;
   addMalpracticeEvent: (type: MalpracticeEvent['type'], score: number) => void;
   events: MalpracticeEvent[];
@@ -82,6 +83,7 @@ export function ProctoringHandler({
         onDetectionUpdate({
           noFaceDetected: result.noFaceDetected,
           multiplePeopleDetected: result.multiplePeopleDetected,
+          detectedObjects: result.detectedObjects,
         });
 
         if(result.noFaceDetected) addMalpracticeEventRef.current('No Face Detected', MALPRACTICE_WEIGHTS['No Face Detected']);
@@ -103,7 +105,7 @@ export function ProctoringHandler({
     return () => {
         clearInterval(interval);
         if (onDetectionUpdate) {
-            onDetectionUpdate({ noFaceDetected: false, multiplePeopleDetected: false });
+            onDetectionUpdate({ noFaceDetected: false, multiplePeopleDetected: false, detectedObjects: [] });
         }
     };
 

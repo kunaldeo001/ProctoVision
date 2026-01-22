@@ -13,6 +13,7 @@ type WebcamFeedProps = {
     proctoringStatus: {
         noFaceDetected: boolean;
         multiplePeopleDetected: boolean;
+        detectedObjects: string[];
     }
 };
 
