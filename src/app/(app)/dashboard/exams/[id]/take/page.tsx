@@ -12,6 +12,7 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import { AlertDialog, AlertDialogAction, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import type { MalpracticeEvent, RiskLevel } from "@/lib/types";
 import { getRiskLevel, MALPRACTICE_WEIGHTS } from "@/lib/proctoring";
+import { useToast } from "@/hooks/use-toast";
 
 export default function ExamTakePage() {
   const router = useRouter();
@@ -28,13 +29,45 @@ export default function ExamTakePage() {
   const [proctoringStatus, setProctoringStatus] = useState({
     noFaceDetected: false,
     multiplePeopleDetected: false,
+    detectedObjects: [] as string[],
   });
   const [malpracticeEvents, setMalpracticeEvents] = useState<MalpracticeEvent[]>([]);
   const [totalScore, setTotalScore] = useState(0);
   const [riskLevel, setRiskLevel] = useState<RiskLevel>('Low');
 
+  const { toast } = useToast();
+  const [warning75Issued, setWarning75Issued] = useState(false);
+  const isSubmittedRef = useRef(false);
+
+  const handleSubmit = useCallback((autoSubmit = false) => {
+    if (isSubmittedRef.current) return;
+    isSubmittedRef.current = true;
+
+    setShowConfirmation(false);
+    console.log("Exam submitted", answers, malpracticeEvents);
+
+    if (autoSubmit) {
+      toast({
+        variant: "destructive",
+        title: "Exam Terminated",
+        description: "Your exam has been automatically submitted due to excessive malpractice violations.",
+      });
+    } else {
+       toast({
+        title: "Exam Submitted Successfully",
+        description: "Your responses have been recorded.",
+      });
+    }
+    
+    // Redirect after a short delay to allow toast to be seen
+    setTimeout(() => {
+        router.push('/dashboard');
+    }, 2000);
+
+  }, [answers, malpracticeEvents, router, toast]);
+
   const addMalpracticeEvent = useCallback((type: MalpracticeEvent['type'], score: number) => {
-    if (!student || !exam) return;
+    if (!student || !exam || isSubmittedRef.current) return;
     const newEvent: MalpracticeEvent = {
       id: `evt-${Date.now()}-${Math.random()}`,
       studentId: student.id,
@@ -50,16 +83,32 @@ export default function ExamTakePage() {
     const newTotalScore = malpracticeEvents.reduce((sum, event) => sum + event.score, 0);
     setTotalScore(newTotalScore);
     setRiskLevel(getRiskLevel(newTotalScore));
-  }, [malpracticeEvents]);
+
+    if (newTotalScore > 100) {
+        if (!isSubmittedRef.current) {
+            handleSubmit(true);
+        }
+    } else if (newTotalScore >= 75 && !warning75Issued) {
+      toast({
+        variant: 'destructive',
+        title: 'High Malpractice Warning',
+        description:
+          'Your malpractice score is high. Further violations may lead to automatic submission.',
+      });
+      setWarning75Issued(true);
+    }
+  }, [malpracticeEvents, warning75Issued, toast, handleSubmit]);
 
 
   useEffect(() => {
-    if (!exam) return;
+    if (!exam || isSubmittedRef.current) return;
     const timer = setInterval(() => {
       setTimeLeft(prev => {
         if (prev <= 1) {
           clearInterval(timer);
-          setShowConfirmation(true);
+          if(!isSubmittedRef.current) {
+             setShowConfirmation(true);
+          }
           return 0;
         }
         return prev - 1;
@@ -101,12 +150,6 @@ export default function ExamTakePage() {
   
   const handleAnswerChange = (value: string) => {
     setAnswers(prev => ({ ...prev, [currentQuestion.id]: value }));
-  };
-
-  const handleSubmit = () => {
-    setShowConfirmation(false);
-    console.log("Exam submitted", answers, malpracticeEvents);
-    router.push('/dashboard');
   };
 
   const currentQuestion = exam.questions[currentQuestionIndex];
@@ -182,7 +225,7 @@ export default function ExamTakePage() {
           <AlertDialogFooter>
             <Button variant="ghost" onClick={() => setShowConfirmation(false)}>Cancel</Button>
             <AlertDialogAction asChild>
-                <Button onClick={handleSubmit}>Submit Exam</Button>
+                <Button onClick={() => handleSubmit(false)}>Submit Exam</Button>
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

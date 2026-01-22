@@ -39,3 +39,19 @@ export interface StudentSession {
   riskLevel: RiskLevel;
   events: MalpracticeEvent[];
 }
+
+export type SummarizeMalpracticeEventsOutput = {
+    summary: string;
+    riskAssessment: 'Low' | 'Medium' | 'High';
+}
+
+export interface ExamReport {
+  id: string;
+  studentId: string;
+  examId: string;
+  score: number;
+  totalQuestions: number;
+  percentage: number;
+  malpracticeScore: number;
+  riskLevel: RiskLevel;
+}
