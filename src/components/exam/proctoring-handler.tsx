@@ -23,7 +23,7 @@ type ProctoringHandlerProps = {
   onDetectionUpdate: (status: {
     noFaceDetected: boolean;
     multiplePeopleDetected: boolean;
-    detectedObjects: string[];
+    phoneDetected: boolean;
   }) => void;
   addMalpracticeEvent: (type: MalpracticeEvent['type'], score: number) => void;
   events: MalpracticeEvent[];
@@ -86,7 +86,7 @@ export function ProctoringHandler({
         onDetectionUpdate({
           noFaceDetected: violations.has('No Face Detected'),
           multiplePeopleDetected: violations.has('Multiple People'),
-          detectedObjects: violations.has('Phone Detected') ? ['phone'] : [],
+          phoneDetected: violations.has('Phone Detected'),
         });
 
         // Add malpractice events for each detected violation
@@ -110,7 +110,7 @@ export function ProctoringHandler({
     return () => {
         clearInterval(interval);
         if (onDetectionUpdate) {
-            onDetectionUpdate({ noFaceDetected: false, multiplePeopleDetected: false, detectedObjects: [] });
+            onDetectionUpdate({ noFaceDetected: false, multiplePeopleDetected: false, phoneDetected: false });
         }
     };
 

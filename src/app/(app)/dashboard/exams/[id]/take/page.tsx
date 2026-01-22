@@ -29,7 +29,7 @@ export default function ExamTakePage() {
   const [proctoringStatus, setProctoringStatus] = useState({
     noFaceDetected: false,
     multiplePeopleDetected: false,
-    detectedObjects: [] as string[],
+    phoneDetected: false,
   });
   const [malpracticeEvents, setMalpracticeEvents] = useState<MalpracticeEvent[]>([]);
   const [totalScore, setTotalScore] = useState(0);

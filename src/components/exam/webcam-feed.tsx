@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Video, VideoOff, UserCheck, UserX, Users } from 'lucide-react';
+import { Video, VideoOff, UserCheck, UserX, Users, Smartphone } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { cn } from '@/lib/utils';
@@ -13,7 +13,7 @@ type WebcamFeedProps = {
     proctoringStatus: {
         noFaceDetected: boolean;
         multiplePeopleDetected: boolean;
-        detectedObjects: string[];
+        phoneDetected: boolean;
     }
 };
 
@@ -93,7 +93,15 @@ export function WebcamFeed({ videoRef, onReady, proctoringStatus }: WebcamFeedPr
             </div>
           )}
 
-          {isReady && !proctoringStatus.multiplePeopleDetected && proctoringStatus.noFaceDetected && (
+          {isReady && !proctoringStatus.multiplePeopleDetected && proctoringStatus.phoneDetected && (
+            <div className="absolute inset-0 bg-destructive/80 flex flex-col items-center justify-center text-destructive-foreground p-4 text-center transition-all duration-300">
+                <Smartphone className="w-12 h-12 mb-2"/>
+                <p className="font-semibold">Phone Detected</p>
+                <p className="text-sm">Mobile phones are not allowed during the exam.</p>
+            </div>
+          )}
+
+          {isReady && !proctoringStatus.multiplePeopleDetected && !proctoringStatus.phoneDetected && proctoringStatus.noFaceDetected && (
              <div className="absolute inset-0 bg-destructive/80 flex flex-col items-center justify-center text-destructive-foreground p-4 text-center transition-all duration-300">
                 <UserX className="w-12 h-12 mb-2"/>
                 <p className="font-semibold">No Face Detected</p>
@@ -101,7 +109,7 @@ export function WebcamFeed({ videoRef, onReady, proctoringStatus }: WebcamFeedPr
             </div>
           )}
 
-          {isReady && !proctoringStatus.noFaceDetected && !proctoringStatus.multiplePeopleDetected && (
+          {isReady && !proctoringStatus.noFaceDetected && !proctoringStatus.multiplePeopleDetected && !proctoringStatus.phoneDetected && (
             <div className="absolute top-2 left-2 bg-green-500/90 text-white text-xs px-2 py-1 rounded-full flex items-center gap-1 transition-all duration-300">
                 <UserCheck className="w-4 h-4" />
                 <span className="font-medium">Proctoring Active</span>

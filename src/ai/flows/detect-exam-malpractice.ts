@@ -37,18 +37,18 @@ export async function detectExamMalpractice(
 
 const detectExamMalpracticePrompt = ai.definePrompt({
   name: 'detectExamMalpracticePrompt',
-  system: `You are a strict AI proctor. Your task is to analyze an image from a student's webcam during an exam and identify specific violations. Your output MUST be a JSON object with a "violations" field containing an array of strings.`,
+  prompt: `Analyze the image provided: {{media url=photoDataUri}}.
+You are a strict AI proctor. Your task is to analyze the image and identify violations.
+Your output MUST be a JSON object with a "violations" field containing an array of strings.
+The strings MUST be from this exact list: "Multiple People", "No Face Detected", "Gaze Away", "Phone Detected".
+- If more than one person is visible, include "Multiple People".
+- If no human face is clearly visible, include "No Face Detected".
+- If the student is looking away from the screen, include "Gaze Away".
+- If a smartphone or other mobile device is visible, you MUST include "Phone Detected".
+If no violations are found, return an empty "violations" array.
+Do not explain. Only return the JSON object.`,
   input: {schema: DetectExamMalpracticeInputSchema},
   output: {schema: DetectExamMalpracticeOutputSchema},
-  prompt: `Analyze the image provided: {{media url=photoDataUri}}.
-
-  Your response MUST ONLY be a JSON object. The "violations" array must contain any applicable violations from this exact list:
-  - "Multiple People": If more than one person is visible.
-  - "No Face Detected": If no human face is clearly visible.
-  - "Gaze Away": If the student is looking away from the screen.
-  - "Phone Detected": If a smartphone or any handheld electronic device is visible. This is a critical violation.
-  
-  If a phone is visible, you MUST include "Phone Detected" in the violations array. If no violations are found, return an empty array.`,
   config: {
     safetySettings: [
       {
