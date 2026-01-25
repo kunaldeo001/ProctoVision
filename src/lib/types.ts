@@ -1,3 +1,19 @@
+
+export type ViolationType =
+  | 'MULTIPLE_PEOPLE'
+  | 'NO_FACE_DETECTED'
+  | 'GAZE_AWAY'
+  | 'PHONE_DETECTED'
+  | 'TAB_SWITCH';
+
+export const VIOLATION_DISPLAY_NAMES: Record<ViolationType, string> = {
+  MULTIPLE_PEOPLE: 'Multiple People',
+  NO_FACE_DETECTED: 'No Face Detected',
+  GAZE_AWAY: 'Gaze Away',
+  PHONE_DETECTED: 'Phone Detected',
+  TAB_SWITCH: 'Tab Switch',
+};
+
 export interface User {
   id: string;
   name: string;
@@ -26,7 +42,7 @@ export interface MalpracticeEvent {
   id: string;
   studentId: string;
   examId: string;
-  type: 'No Face Detected' | 'Multiple People' | 'Gaze Away' | 'Phone Detected' | 'Tab Switch';
+  type: ViolationType;
   score: number;
   timestamp: number; // as Date.now()
 }

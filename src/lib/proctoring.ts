@@ -1,13 +1,12 @@
-import type { MalpracticeEvent, RiskLevel } from './types';
 
-export type ViolationType = MalpracticeEvent['type'];
+import type { MalpracticeEvent, RiskLevel, ViolationType } from './types';
 
 export const MALPRACTICE_WEIGHTS: Record<ViolationType, number> = {
-  'No Face Detected': 25,
-  'Multiple People': 30,
-  'Gaze Away': 10,
-  'Phone Detected': 40,
-  'Tab Switch': 15,
+  NO_FACE_DETECTED: 25,
+  MULTIPLE_PEOPLE: 30,
+  GAZE_AWAY: 10,
+  PHONE_DETECTED: 40,
+  TAB_SWITCH: 15,
 };
 
 export const getRiskLevel = (score: number): RiskLevel => {

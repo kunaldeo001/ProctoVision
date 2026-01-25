@@ -1,3 +1,4 @@
+
 'use client';
 import { mockExams, mockUsers } from "@/lib/mock-data";
 import { notFound, useRouter, useParams } from "next/navigation";
@@ -10,7 +11,7 @@ import { ProctoringHandler } from '@/components/exam/proctoring-handler';
 import { WebcamFeed } from "@/components/exam/webcam-feed";
 import { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import { AlertDialog, AlertDialogAction, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
-import type { MalpracticeEvent } from "@/lib/types";
+import type { ViolationType } from "@/lib/types";
 import { MalpracticeChecker } from "@/lib/proctoring";
 import { useToast } from "@/hooks/use-toast";
 
@@ -31,6 +32,7 @@ export default function ExamTakePage() {
     noFaceDetected: false,
     multiplePeopleDetected: false,
     phoneDetected: false,
+    gazeAway: false,
   });
 
   const malpracticeChecker = useMemo(() => {
@@ -70,7 +72,7 @@ export default function ExamTakePage() {
 
   }, [answers, proctoringReport, router, toast]);
 
-  const addMalpracticeEvent = useCallback((type: MalpracticeEvent['type']) => {
+  const addMalpracticeEvent = useCallback((type: ViolationType) => {
     if (!malpracticeChecker || isSubmittedRef.current) return;
     malpracticeChecker.addViolation(type);
     setProctoringReport(malpracticeChecker.getReport());
@@ -110,7 +112,7 @@ export default function ExamTakePage() {
   useEffect(() => {
     const handleVisibilityChange = () => {
       if (document.hidden) {
-        addMalpracticeEvent('Tab Switch');
+        addMalpracticeEvent('TAB_SWITCH');
       }
     };
     document.addEventListener("visibilitychange", handleVisibilityChange);

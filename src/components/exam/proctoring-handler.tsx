@@ -1,10 +1,12 @@
+
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ShieldAlert, AlertTriangle, CheckCircle } from 'lucide-react';
 import { Progress } from '@/components/ui/progress';
-import type { MalpracticeEvent, RiskLevel } from '@/lib/types';
+import type { MalpracticeEvent, RiskLevel, ViolationType } from '@/lib/types';
+import { VIOLATION_DISPLAY_NAMES } from '@/lib/types';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
 import { formatDistanceToNow } from 'date-fns';
@@ -23,8 +25,9 @@ type ProctoringHandlerProps = {
     noFaceDetected: boolean;
     multiplePeopleDetected: boolean;
     phoneDetected: boolean;
+    gazeAway: boolean;
   }) => void;
-  addMalpracticeEvent: (type: MalpracticeEvent['type']) => void;
+  addMalpracticeEvent: (type: ViolationType) => void;
   events: MalpracticeEvent[];
   totalScore: number;
   riskLevel: RiskLevel;
@@ -80,14 +83,14 @@ export function ProctoringHandler({
         const violations = new Set(result.violations || []);
         
         onDetectionUpdate({
-          noFaceDetected: violations.has('No Face Detected'),
-          multiplePeopleDetected: violations.has('Multiple People'),
-          phoneDetected: violations.has('Phone Detected'),
+          noFaceDetected: violations.has('NO_FACE_DETECTED'),
+          multiplePeopleDetected: violations.has('MULTIPLE_PEOPLE'),
+          phoneDetected: violations.has('PHONE_DETECTED'),
+          gazeAway: violations.has('GAZE_AWAY'),
         });
 
         violations.forEach(violation => {
-          const violationType = violation as MalpracticeEvent['type'];
-          addMalpracticeEventRef.current(violationType);
+          addMalpracticeEventRef.current(violation);
         });
 
       } catch (error) {
@@ -102,7 +105,7 @@ export function ProctoringHandler({
     return () => {
         clearInterval(interval);
         if (onDetectionUpdate) {
-            onDetectionUpdate({ noFaceDetected: false, multiplePeopleDetected: false, phoneDetected: false });
+            onDetectionUpdate({ noFaceDetected: false, multiplePeopleDetected: false, phoneDetected: false, gazeAway: false });
         }
     };
 
@@ -139,7 +142,7 @@ export function ProctoringHandler({
                         <AlertTriangle className="w-4 h-4 text-yellow-500 mt-0.5" />
                     </div>
                     <div className="text-sm">
-                        <p className="font-medium">{event.type}</p>
+                        <p className="font-medium">{VIOLATION_DISPLAY_NAMES[event.type] || event.type}</p>
                         <p className="text-xs text-muted-foreground">
                         {formatDistanceToNow(event.timestamp, { addSuffix: true })}
                         </p>

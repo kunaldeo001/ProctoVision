@@ -1,10 +1,11 @@
+
 'use client';
 import { Bar, BarChart, ResponsiveContainer, XAxis, YAxis } from 'recharts';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { ChartTooltip, ChartTooltipContent, ChartContainer } from "@/components/ui/chart";
 
 const chartData = [
-  { type: "Gaze", count: 18 },
+  { type: "Gaze Away", count: 18 },
   { type: "Tab Switch", count: 12 },
   { type: "Phone", count: 5 },
   { type: "Multi-Face", count: 3 },
@@ -29,7 +30,7 @@ export function RecentViolationsChart() {
         <ChartContainer config={chartConfig} className="w-full h-64">
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={chartData} margin={{ top: 5, right: 10, left: -20, bottom: 5 }}>
-              <XAxis dataKey="type" tickLine={false} axisLine={false} tickMargin={8} fontSize={12} />
+              <XAxis dataKey="type" tickLine={false} axisLine={false} tickMargin={8} fontSize={12} interval={0} angle={-30} textAnchor="end" />
               <YAxis tickLine={false} axisLine={false} tickMargin={8} fontSize={12} />
               <ChartTooltip
                 cursor={false}

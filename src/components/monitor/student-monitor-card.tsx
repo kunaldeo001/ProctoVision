@@ -1,8 +1,10 @@
+
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Progress } from '@/components/ui/progress';
 import type { User, StudentSession, RiskLevel } from '@/lib/types';
+import { VIOLATION_DISPLAY_NAMES } from '@/lib/types';
 import { Video, ShieldAlert, AlertTriangle, CheckCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { formatDistanceToNow } from 'date-fns';
@@ -68,7 +70,7 @@ export function StudentMonitorCard({ student, session }: StudentMonitorCardProps
               <div key={event.id} className="flex justify-between items-center">
                 <div className="flex items-center gap-2">
                   <AlertTriangle className="w-3 h-3 text-yellow-500 flex-shrink-0" />
-                  <span>{event.type}</span>
+                  <span>{VIOLATION_DISPLAY_NAMES[event.type] || event.type}</span>
                 </div>
                 <span className="text-muted-foreground">
                   {formatDistanceToNow(event.timestamp, { addSuffix: true })}

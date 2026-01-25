@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState } from 'react';
@@ -13,6 +14,7 @@ import { Button } from '@/components/ui/button';
 import { FileText, Loader2, ServerCrash } from 'lucide-react';
 import { summarizeMalpracticeEvents } from '@/ai/flows/summarize-malpractice-events';
 import type { SummarizeMalpracticeEventsOutput, Exam, StudentSession } from '@/lib/types';
+import { VIOLATION_DISPLAY_NAMES } from '@/lib/types';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { mockUsers } from '@/lib/mock-data';
@@ -52,7 +54,7 @@ export function ReportGenerator({ exam, sessions }: ReportGeneratorProps) {
 
     try {
       const malpracticeEvents = studentSession.events.map(
-        (e) => `${e.type} (Score: +${e.score}) at ${new Date(e.timestamp).toLocaleTimeString()}`
+        (e) => `${VIOLATION_DISPLAY_NAMES[e.type] || e.type} (Score: +${e.score}) at ${new Date(e.timestamp).toLocaleTimeString()}`
       );
       
       const result = await summarizeMalpracticeEvents({

@@ -1,3 +1,4 @@
+
 'use server';
 
 /**
@@ -11,6 +12,14 @@
 import {ai} from '@/ai/genkit';
 import {z} from 'genkit';
 
+const VIOLATION_TYPES = [
+  'MULTIPLE_PEOPLE',
+  'NO_FACE_DETECTED',
+  'GAZE_AWAY',
+  'PHONE_DETECTED',
+] as const;
+
+
 const DetectExamMalpracticeInputSchema = z.object({
   photoDataUri: z
     .string()
@@ -22,9 +31,9 @@ export type DetectExamMalpracticeInput = z.infer<typeof DetectExamMalpracticeInp
 
 const DetectExamMalpracticeOutputSchema = z.object({
   violations: z
-    .array(z.string())
+    .array(z.enum(VIOLATION_TYPES))
     .describe(
-      'A list of detected violations. Possible values can include: "Multiple People", "No Face Detected", "Gaze Away", "Phone Detected".'
+      'A list of detected violations.'
     ),
 });
 export type DetectExamMalpracticeOutput = z.infer<typeof DetectExamMalpracticeOutputSchema>;
@@ -40,11 +49,11 @@ const detectExamMalpracticePrompt = ai.definePrompt({
   prompt: `Analyze the image provided: {{media url=photoDataUri}}.
 You are a strict AI proctor. Your task is to analyze the image and identify violations.
 Your output MUST be a JSON object with a "violations" field containing an array of strings.
-The strings MUST be from this exact list: "Multiple People", "No Face Detected", "Gaze Away", "Phone Detected".
-- If more than one person is visible, include "Multiple People".
-- If no human face is clearly visible, include "No Face Detected".
-- If the student is looking away from the screen, include "Gaze Away".
-- If a smartphone or other mobile device is visible, you MUST include "Phone Detected".
+The strings MUST be from this exact list: ${JSON.stringify(VIOLATION_TYPES)}.
+- If more than one person is visible, you MUST include "MULTIPLE_PEOPLE".
+- If no human face is clearly visible, you MUST include "NO_FACE_DETECTED".
+- If the student is looking away from the screen, you MUST include "GAZE_AWAY".
+- If a smartphone or other mobile device is visible, you MUST include "PHONE_DETECTED".
 If no violations are found, return an empty "violations" array.
 Do not explain. Only return the JSON object.`,
   input: {schema: DetectExamMalpracticeInputSchema},
