@@ -9,7 +9,6 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
 import { formatDistanceToNow } from 'date-fns';
 import { detectExamMalpractice } from '@/ai/flows/detect-exam-malpractice';
-import { MALPRACTICE_WEIGHTS } from '@/lib/proctoring';
 
 const riskStyles: Record<RiskLevel, { icon: React.ReactNode, color: string, text: string }> = {
   Low: { icon: <CheckCircle className="w-5 h-5" />, color: 'text-green-500', text: 'No significant issues detected.' },
@@ -25,7 +24,7 @@ type ProctoringHandlerProps = {
     multiplePeopleDetected: boolean;
     phoneDetected: boolean;
   }) => void;
-  addMalpracticeEvent: (type: MalpracticeEvent['type'], score: number) => void;
+  addMalpracticeEvent: (type: MalpracticeEvent['type']) => void;
   events: MalpracticeEvent[];
   totalScore: number;
   riskLevel: RiskLevel;
@@ -45,7 +44,6 @@ export function ProctoringHandler({
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const isProcessingRef = useRef(false);
 
-  // Use a ref to hold the latest addMalpracticeEvent function to avoid stale closures in setInterval
   const addMalpracticeEventRef = useRef(addMalpracticeEvent);
   useEffect(() => {
     addMalpracticeEventRef.current = addMalpracticeEvent;
@@ -79,23 +77,17 @@ export function ProctoringHandler({
 
       try {
         const result = await detectExamMalpractice({ photoDataUri });
-        
         const violations = new Set(result.violations || []);
         
-        // Update the UI overlay status
         onDetectionUpdate({
           noFaceDetected: violations.has('No Face Detected'),
           multiplePeopleDetected: violations.has('Multiple People'),
           phoneDetected: violations.has('Phone Detected'),
         });
 
-        // Add malpractice events for each detected violation
         violations.forEach(violation => {
-          // Ensure the violation string is a valid type
           const violationType = violation as MalpracticeEvent['type'];
-          if (Object.keys(MALPRACTICE_WEIGHTS).includes(violationType)) {
-            addMalpracticeEventRef.current(violationType, MALPRACTICE_WEIGHTS[violationType]);
-          }
+          addMalpracticeEventRef.current(violationType);
         });
 
       } catch (error) {
@@ -106,7 +98,7 @@ export function ProctoringHandler({
       }
     };
 
-    const interval = setInterval(processFrame, 5000); // Check every 5 seconds
+    const interval = setInterval(processFrame, 5000);
     return () => {
         clearInterval(interval);
         if (onDetectionUpdate) {

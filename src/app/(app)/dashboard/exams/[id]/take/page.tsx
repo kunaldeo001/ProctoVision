@@ -8,10 +8,10 @@ import { Button } from "@/components/ui/button";
 import { Timer } from 'lucide-react';
 import { ProctoringHandler } from '@/components/exam/proctoring-handler';
 import { WebcamFeed } from "@/components/exam/webcam-feed";
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import { AlertDialog, AlertDialogAction, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
-import type { MalpracticeEvent, RiskLevel } from "@/lib/types";
-import { getRiskLevel, MALPRACTICE_WEIGHTS } from "@/lib/proctoring";
+import type { MalpracticeEvent } from "@/lib/types";
+import { MalpracticeChecker } from "@/lib/proctoring";
 import { useToast } from "@/hooks/use-toast";
 
 export default function ExamTakePage() {
@@ -19,6 +19,7 @@ export default function ExamTakePage() {
   const params = useParams<{ id: string }>();
   const exam = mockExams.find((e) => e.id === params.id);
   const student = mockUsers.find(u => u.role === 'student');
+  
   const videoRef = useRef<HTMLVideoElement>(null);
   const [isCameraReady, setIsCameraReady] = useState(false);
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
@@ -31,9 +32,13 @@ export default function ExamTakePage() {
     multiplePeopleDetected: false,
     phoneDetected: false,
   });
-  const [malpracticeEvents, setMalpracticeEvents] = useState<MalpracticeEvent[]>([]);
-  const [totalScore, setTotalScore] = useState(0);
-  const [riskLevel, setRiskLevel] = useState<RiskLevel>('Low');
+
+  const malpracticeChecker = useMemo(() => {
+    if (!student || !exam) return null;
+    return new MalpracticeChecker(student.id, exam.id);
+  }, [student, exam]);
+  
+  const [proctoringReport, setProctoringReport] = useState(() => malpracticeChecker?.getReport());
 
   const { toast } = useToast();
   const [warning75Issued, setWarning75Issued] = useState(false);
@@ -44,7 +49,7 @@ export default function ExamTakePage() {
     isSubmittedRef.current = true;
 
     setShowConfirmation(false);
-    console.log("Exam submitted", answers, malpracticeEvents);
+    console.log("Exam submitted", answers, proctoringReport?.events);
 
     if (autoSubmit) {
       toast({
@@ -59,36 +64,22 @@ export default function ExamTakePage() {
       });
     }
     
-    // Redirect after a short delay to allow toast to be seen
     setTimeout(() => {
         router.push('/dashboard');
     }, 2000);
 
-  }, [answers, malpracticeEvents, router, toast]);
+  }, [answers, proctoringReport, router, toast]);
 
-  const addMalpracticeEvent = useCallback((type: MalpracticeEvent['type'], score: number) => {
-    if (!student || !exam || isSubmittedRef.current) return;
-    const newEvent: MalpracticeEvent = {
-      id: `evt-${Date.now()}-${Math.random()}`,
-      studentId: student.id,
-      examId: exam.id,
-      type,
-      score,
-      timestamp: Date.now(),
-    };
-    setMalpracticeEvents(prev => [newEvent, ...prev]);
-  }, [student, exam]);
+  const addMalpracticeEvent = useCallback((type: MalpracticeEvent['type']) => {
+    if (!malpracticeChecker || isSubmittedRef.current) return;
+    malpracticeChecker.addViolation(type);
+    setProctoringReport(malpracticeChecker.getReport());
 
-  useEffect(() => {
-    const newTotalScore = malpracticeEvents.reduce((sum, event) => sum + event.score, 0);
-    setTotalScore(newTotalScore);
-    setRiskLevel(getRiskLevel(newTotalScore));
-
-    if (newTotalScore > 100) {
+    if (malpracticeChecker.isOverThreshold()) {
         if (!isSubmittedRef.current) {
             handleSubmit(true);
         }
-    } else if (newTotalScore >= 75 && !warning75Issued) {
+    } else if (malpracticeChecker.isAtWarningThreshold() && !warning75Issued) {
       toast({
         variant: 'destructive',
         title: 'High Malpractice Warning',
@@ -97,8 +88,7 @@ export default function ExamTakePage() {
       });
       setWarning75Issued(true);
     }
-  }, [malpracticeEvents, warning75Issued, toast, handleSubmit]);
-
+  }, [malpracticeChecker, warning75Issued, toast, handleSubmit]);
 
   useEffect(() => {
     if (!exam || isSubmittedRef.current) return;
@@ -107,7 +97,7 @@ export default function ExamTakePage() {
         if (prev <= 1) {
           clearInterval(timer);
           if(!isSubmittedRef.current) {
-             setShowConfirmation(true);
+             handleSubmit(false);
           }
           return 0;
         }
@@ -115,12 +105,12 @@ export default function ExamTakePage() {
       });
     }, 1000);
     return () => clearInterval(timer);
-  }, [exam]);
+  }, [exam, handleSubmit]);
 
   useEffect(() => {
     const handleVisibilityChange = () => {
       if (document.hidden) {
-        addMalpracticeEvent('Tab Switch', MALPRACTICE_WEIGHTS['Tab Switch']);
+        addMalpracticeEvent('Tab Switch');
       }
     };
     document.addEventListener("visibilitychange", handleVisibilityChange);
@@ -130,7 +120,7 @@ export default function ExamTakePage() {
   }, [addMalpracticeEvent]);
 
 
-  if (!exam || !student) {
+  if (!exam || !student || !proctoringReport) {
     notFound();
   }
 
@@ -208,9 +198,9 @@ export default function ExamTakePage() {
           enabled={isCameraReady}
           onDetectionUpdate={setProctoringStatus}
           addMalpracticeEvent={addMalpracticeEvent}
-          events={malpracticeEvents}
-          totalScore={totalScore}
-          riskLevel={riskLevel}
+          events={proctoringReport.events}
+          totalScore={proctoringReport.totalScore}
+          riskLevel={proctoringReport.riskLevel}
         />
         
       </aside>

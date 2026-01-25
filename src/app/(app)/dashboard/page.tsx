@@ -3,13 +3,14 @@ import { PlusCircle, BarChart, BookOpen, ShieldAlert } from 'lucide-react';
 import { ExamList } from "@/components/dashboard/exam-list";
 import { StatCard } from "@/components/dashboard/stat-card";
 import { RecentViolationsChart } from "@/components/dashboard/recent-violations-chart";
-import { mockExams } from "@/lib/mock-data";
+import { mockExams, mockReports } from "@/lib/mock-data";
 
 export default function DashboardPage() {
   const liveExams = mockExams.filter(e => e.status === 'live').length;
   const totalStudentsInLiveExams = mockExams
     .filter(e => e.status === 'live')
     .reduce((sum, exam) => sum + exam.studentIds.length, 0);
+  const highRiskAlerts = mockReports.filter(r => r.riskLevel === 'High').length;
 
   return (
     <div className="flex-1 space-y-4 p-4 md:p-8 pt-6 bg-background">
@@ -39,7 +40,7 @@ export default function DashboardPage() {
         />
         <StatCard
           title="High-Risk Alerts"
-          value="7"
+          value={highRiskAlerts.toString()}
           icon={<ShieldAlert className="h-4 w-4 text-muted-foreground" />}
           description="Incidents requiring immediate attention"
         />
