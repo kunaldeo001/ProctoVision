@@ -18,6 +18,7 @@ import {
   Settings,
   CircleUser,
   LogOut,
+  FilePen,
 } from 'lucide-react';
 import { ProctoVisionLogo } from '@/components/icons/proctovision-logo';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -54,6 +55,11 @@ export function AppSidebar() {
       icon: <FileText />,
     },
     {
+      href: '/dashboard/exams/1/take',
+      label: 'Take Exam',
+      icon: <FilePen />,
+    },
+    {
       href: '/settings',
       label: 'Settings',
       icon: <Settings />,
@@ -77,7 +83,7 @@ export function AppSidebar() {
             <SidebarMenuItem key={item.href}>
               <Link href={item.href}>
                 <SidebarMenuButton
-                  isActive={pathname.startsWith(item.href)}
+                  isActive={pathname.startsWith(item.href) && item.href !== '/dashboard' ? pathname === item.href : pathname === '/dashboard'}
                   tooltip={{ children: item.label }}
                 >
                   {item.icon}
