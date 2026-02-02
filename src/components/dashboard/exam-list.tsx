@@ -76,6 +76,16 @@ export function ExamList({ exams }: ExamListProps) {
                       {exam.status === 'upcoming' && (
                         <DropdownMenuItem>Start Exam</DropdownMenuItem>
                       )}
+                      {(exam.status === 'live' || exam.status === 'upcoming') && (
+                        <DropdownMenuItem asChild>
+                          <Link href={`/dashboard/exams/${exam.id}/take`}>Take Exam</Link>
+                        </DropdownMenuItem>
+                      )}
+                      {exam.status === 'completed' && (
+                        <DropdownMenuItem asChild>
+                          <Link href={`/dashboard/exams/${exam.id}/take`}>Take Exam Again</Link>
+                        </DropdownMenuItem>
+                      )}
                       <DropdownMenuItem>Edit</DropdownMenuItem>
                       <DropdownMenuItem className="text-destructive focus:text-destructive">Delete</DropdownMenuItem>
                     </DropdownMenuContent>
