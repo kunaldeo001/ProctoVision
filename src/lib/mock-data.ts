@@ -4,11 +4,11 @@ import { PlaceHolderImages } from './placeholder-images';
 const studentImages = PlaceHolderImages.filter(img => img.id.startsWith('student-'));
 
 export const mockUsers: User[] = [
-  { id: 'admin-1', name: 'Kunal Deo', email: 'k.deo@university.edu', avatarUrl: 'https://picsum.photos/seed/a1/100/100', role: 'admin' },
-  { id: 'student-1', name: 'Priya Sharma', email: 'priya.s@university.edu', avatarUrl: studentImages[0]?.imageUrl || '', role: 'student' },
-  { id: 'student-2', name: 'Rohan Gupta', email: 'rohan.g@university.edu', avatarUrl: studentImages[1]?.imageUrl || '', role: 'student' },
-  { id: 'student-3', name: 'Anjali Singh', email: 'anjali.s@university.edu', avatarUrl: studentImages[2]?.imageUrl || '', role: 'student' },
-  { id: 'student-4', name: 'Vikram Kumar', email: 'vikram.k@university.edu', avatarUrl: studentImages[3]?.imageUrl || '', role: 'student' },
+  { id: 'admin-1', name: 'Kunal Deo', email: 'kunal.deo@srm.edu', avatarUrl: 'https://picsum.photos/seed/a1/100/100', role: 'admin' },
+  { id: 'student-1', name: 'Priya Sharma', email: 'priya.s@srm.edu', avatarUrl: studentImages[0]?.imageUrl || '', role: 'student' },
+  { id: 'student-2', name: 'Rohan Gupta', email: 'rohan.g@srm.edu', avatarUrl: studentImages[1]?.imageUrl || '', role: 'student' },
+  { id: 'student-3', name: 'Anjali Singh', email: 'anjali.s@srm.edu', avatarUrl: studentImages[2]?.imageUrl || '', role: 'student' },
+  { id: 'student-4', name: 'Vikram Kumar', email: 'vikram.k@srm.edu', avatarUrl: studentImages[3]?.imageUrl || '', role: 'student' },
 ];
 
 export const mockExams: Exam[] = [
