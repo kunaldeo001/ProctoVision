@@ -8,5 +8,5 @@ ProctoVision is an advanced AI-based online exam proctoring system designed to e
 - **Indian Localization**: Updated student profiles and admin data with Indian names and institution-specific email domains (`@srm.edu`).
 - **Interactive Monitoring**: Added a live monitor grid for admins to track student sessions in real-time.
 
-#### Getting Started
+####Getting Started
 To get started, navigate to the Dashboard to view live exams or use the "Take Exam" button in the sidebar to test the proctoring features.
