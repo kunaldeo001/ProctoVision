@@ -25,15 +25,28 @@ export interface User {
 export interface Question {
   id: string;
   text: string;
+  type: 'mcq' | 'multi-select' | 'true-false' | 'short-answer';
   options: string[];
-  correctOption: number;
+  correctOption?: number | number[]; // Can be array for multi-select
+  correctTextAnswer?: string;
+  marks: number;
+  difficulty: 'easy' | 'medium' | 'hard';
+  topic: string;
+  explanation: string;
+  tags: string[];
 }
 
 export interface Exam {
   id: string;
   title: string;
+  description: string;
   duration: number; // in minutes
-  status: 'upcoming' | 'live' | 'completed';
+  status: 'draft' | 'upcoming' | 'live' | 'completed' | 'archived';
+  startDate: Date | null;
+  endDate: Date | null;
+  totalMarks: number;
+  passingPercentage: number;
+  proctoringLevel: 'none' | 'standard' | 'strict';
   questions: Question[];
   studentIds: string[];
 }

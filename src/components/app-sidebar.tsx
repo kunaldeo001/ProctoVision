@@ -19,6 +19,7 @@ import {
   CircleUser,
   LogOut,
   FilePen,
+  Database,
 } from 'lucide-react';
 import { ProctoVisionLogo } from '@/components/icons/proctovision-logo';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -53,6 +54,11 @@ export function AppSidebar() {
       href: '/reports',
       label: 'Reports',
       icon: <FileText />,
+    },
+    {
+      href: '/questions',
+      label: 'Question Bank',
+      icon: <Database />,
     },
     {
       href: '/dashboard/exams/1/take',
