@@ -33,6 +33,7 @@ export default function ExamTakePage() {
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [timeLeft, setTimeLeft] = useState((exam?.duration || 0) * 60);
   const [showConfirmation, setShowConfirmation] = useState(false);
+  const [sensitivity, setSensitivity] = useState<'standard' | 'high' | 'ultra'>('high');
   
   const [proctoringStatus, setProctoringStatus] = useState({
     noFaceDetected: false,
@@ -133,10 +134,27 @@ export default function ExamTakePage() {
     return () => clearInterval(timer);
   }, [exam, handleSubmit]);
 
-  // Tab visibility + network detection
+  // Tab visibility, focus loss & network detection
   useEffect(() => {
     const handleVisibilityChange = () => {
-      if (document.hidden) addMalpracticeEvent('TAB_SWITCH');
+      if (document.hidden && !isSubmittedRef.current) {
+        addMalpracticeEvent('TAB_SWITCH');
+        toast({
+          variant: 'destructive',
+          title: '⚠️ Tab Switch Detected',
+          description: 'Navigating away from the exam tab is recorded as an integrity violation (+15 pts).',
+        });
+      }
+    };
+    const handleBlur = () => {
+      if (!isSubmittedRef.current) {
+        addMalpracticeEvent('TAB_SWITCH');
+        toast({
+          variant: 'destructive',
+          title: '⚠️ Window Focus Lost',
+          description: 'Leaving or clicking outside the exam application is flagged (+15 pts).',
+        });
+      }
     };
     const handleOnline = () => {
       setIsOffline(false);
@@ -145,11 +163,13 @@ export default function ExamTakePage() {
     const handleOffline = () => setIsOffline(true);
     
     document.addEventListener("visibilitychange", handleVisibilityChange);
+    window.addEventListener("blur", handleBlur);
     window.addEventListener("online", handleOnline);
     window.addEventListener("offline", handleOffline);
     
     return () => {
       document.removeEventListener("visibilitychange", handleVisibilityChange);
+      window.removeEventListener("blur", handleBlur);
       window.removeEventListener("online", handleOnline);
       window.removeEventListener("offline", handleOffline);
     };
@@ -432,6 +452,8 @@ export default function ExamTakePage() {
             videoRef={videoRef}
             overlayCanvasRef={overlayCanvasRef}
             onReady={setIsCameraReady}
+            sensitivity={sensitivity}
+            onSensitivityChange={setSensitivity}
             proctoringStatus={proctoringStatus}
             onSimulateViolation={handleSimulateViolation}
           />
@@ -440,6 +462,7 @@ export default function ExamTakePage() {
             videoRef={videoRef}
             overlayCanvasRef={overlayCanvasRef}
             enabled={isCameraReady}
+            sensitivity={sensitivity}
             onDetectionUpdate={setProctoringStatus}
             addMalpracticeEvent={addMalpracticeEvent}
             events={proctoringReport.events}

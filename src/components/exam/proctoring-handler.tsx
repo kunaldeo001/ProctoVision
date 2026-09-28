@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { ShieldAlert, AlertTriangle, CheckCircle, Activity, Sparkles } from 'lucide-react';
+import { ShieldAlert, AlertTriangle, CheckCircle, Activity, Sparkles, Volume2, VolumeX } from 'lucide-react';
 import { Progress } from '@/components/ui/progress';
 import type { MalpracticeEvent, RiskLevel, ViolationType } from '@/lib/types';
 import { VIOLATION_DISPLAY_NAMES } from '@/lib/types';
@@ -40,6 +40,7 @@ type ProctoringHandlerProps = {
   videoRef: React.RefObject<HTMLVideoElement | null>;
   overlayCanvasRef?: React.RefObject<HTMLCanvasElement | null>;
   enabled: boolean;
+  sensitivity?: 'standard' | 'high' | 'ultra';
   onDetectionUpdate: (status: {
     noFaceDetected: boolean;
     multiplePeopleDetected: boolean;
@@ -52,10 +53,37 @@ type ProctoringHandlerProps = {
   riskLevel: RiskLevel;
 };
 
+// Play short acoustic warning chime on severe malpractice
+function playAlertChime() {
+  if (typeof window === 'undefined') return;
+  try {
+    const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
+    if (!AudioCtx) return;
+    const ctx = new AudioCtx();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+
+    osc.type = 'triangle';
+    osc.frequency.setValueAtTime(720, ctx.currentTime);
+    osc.frequency.exponentialRampToValueAtTime(440, ctx.currentTime + 0.25);
+
+    gain.gain.setValueAtTime(0.2, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.25);
+
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.start();
+    osc.stop(ctx.currentTime + 0.25);
+  } catch {
+    // Non-critical audio alert
+  }
+}
+
 export function ProctoringHandler({
   videoRef,
   overlayCanvasRef,
   enabled,
+  sensitivity = 'high',
   onDetectionUpdate,
   addMalpracticeEvent,
   events,
@@ -65,6 +93,7 @@ export function ProctoringHandler({
   const [isAiReady, setIsAiReady] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [lastDetectedObj, setLastDetectedObj] = useState<string | null>(null);
+  const [audioAlertsEnabled, setAudioAlertsEnabled] = useState(true);
   const { toast } = useToast();
 
   const addMalpracticeEventRef = useRef(addMalpracticeEvent);
@@ -72,33 +101,48 @@ export function ProctoringHandler({
     addMalpracticeEventRef.current = addMalpracticeEvent;
   }, [addMalpracticeEvent]);
 
-  // Cooldown tracker per violation type to avoid spamming 50 events in 2 seconds
+  // Cooldown tracker per violation type to avoid spamming
   const lastViolationTimeRef = useRef<Record<string, number>>({});
   const consecutiveAbsenceRef = useRef(0);
   const consecutiveGazeRef = useRef(0);
 
-  const triggerViolationWithCooldown = useCallback((type: ViolationType, cooldownMs = 6000) => {
+  const triggerViolationWithCooldown = useCallback((type: ViolationType, cooldownMs = 4500) => {
     const now = Date.now();
     const lastTime = lastViolationTimeRef.current[type] || 0;
     if (now - lastTime >= cooldownMs) {
       lastViolationTimeRef.current[type] = now;
       addMalpracticeEventRef.current(type);
 
+      if (audioAlertsEnabled) {
+        playAlertChime();
+      }
+
       if (type === 'PHONE_DETECTED') {
         toast({
           variant: 'destructive',
-          title: '🚨 Mobile Phone Detected',
-          description: 'A mobile device was detected in your camera frame (+40 points).',
+          title: '🚨 Mobile Phone / Device Detected',
+          description: 'A mobile phone or forbidden device was identified in the camera frame (+40 pts).',
         });
       } else if (type === 'MULTIPLE_PEOPLE') {
         toast({
           variant: 'destructive',
           title: '⚠️ Multiple People Detected',
-          description: 'More than one individual detected in camera feed (+30 points).',
+          description: 'More than one person identified in camera view (+30 pts).',
+        });
+      } else if (type === 'NO_FACE_DETECTED') {
+        toast({
+          variant: 'destructive',
+          title: '👤 Face Not Visible',
+          description: 'Please remain clearly centered and visible in the camera frame (+25 pts).',
+        });
+      } else if (type === 'GAZE_AWAY') {
+        toast({
+          title: '👀 Gaze Deviation Detected',
+          description: 'Please keep your eyes focused on the exam screen (+10 pts).',
         });
       }
     }
-  }, [toast]);
+  }, [toast, audioAlertsEnabled]);
 
   // Pre-load TensorFlow.js COCO-SSD model
   useEffect(() => {
@@ -107,7 +151,7 @@ export function ProctoringHandler({
     });
   }, []);
 
-  // Primary Real-time Vision AI Loop (runs every 850ms)
+  // Primary Real-time Vision AI Loop (runs every 550ms for instant detection)
   useEffect(() => {
     if (!enabled || !videoRef.current) return;
 
@@ -121,7 +165,7 @@ export function ProctoringHandler({
       setIsProcessing(true);
 
       try {
-        const analysis = await analyzeVideoFrame(videoRef.current);
+        const analysis = await analyzeVideoFrame(videoRef.current, sensitivity);
 
         if (isDestroyed) return;
 
@@ -140,21 +184,21 @@ export function ProctoringHandler({
 
         // 1. Phone Detection (immediate priority)
         if (analysis.phoneDetected) {
-          setLastDetectedObj(`Phone (${analysis.phoneConfidence || 85}%)`);
-          triggerViolationWithCooldown('PHONE_DETECTED', 6000);
+          setLastDetectedObj(`Phone (${analysis.phoneConfidence || 88}%)`);
+          triggerViolationWithCooldown('PHONE_DETECTED', 4500);
         }
 
         // 2. Multiple People Detection
         if (analysis.multiplePeopleDetected) {
           setLastDetectedObj(`${analysis.peopleCount} People`);
-          triggerViolationWithCooldown('MULTIPLE_PEOPLE', 6000);
+          triggerViolationWithCooldown('MULTIPLE_PEOPLE', 4500);
         }
 
         // 3. Absence / No Face
         if (analysis.noFaceDetected) {
           consecutiveAbsenceRef.current += 1;
           if (consecutiveAbsenceRef.current >= 2) {
-            triggerViolationWithCooldown('NO_FACE_DETECTED', 7000);
+            triggerViolationWithCooldown('NO_FACE_DETECTED', 6000);
           }
         } else {
           consecutiveAbsenceRef.current = 0;
@@ -164,7 +208,7 @@ export function ProctoringHandler({
         if (analysis.gazeAway) {
           consecutiveGazeRef.current += 1;
           if (consecutiveGazeRef.current >= 2) {
-            triggerViolationWithCooldown('GAZE_AWAY', 8000);
+            triggerViolationWithCooldown('GAZE_AWAY', 7000);
           }
         } else {
           consecutiveGazeRef.current = 0;
@@ -182,7 +226,7 @@ export function ProctoringHandler({
       }
     };
 
-    const interval = setInterval(runVisionCycle, 850);
+    const interval = setInterval(runVisionCycle, 550);
 
     return () => {
       isDestroyed = true;
@@ -194,9 +238,9 @@ export function ProctoringHandler({
         gazeAway: false,
       });
     };
-  }, [enabled, videoRef, overlayCanvasRef, onDetectionUpdate, triggerViolationWithCooldown]);
+  }, [enabled, videoRef, overlayCanvasRef, sensitivity, onDetectionUpdate, triggerViolationWithCooldown]);
 
-  // Secondary Cloud Gemini AI Loop (every 12 seconds with compressed 480x270 snapshot)
+  // Secondary Cloud Gemini AI Loop (every 10 seconds with compressed 480x270 snapshot)
   useEffect(() => {
     if (!enabled || !videoRef.current) return;
 
@@ -209,12 +253,12 @@ export function ProctoringHandler({
       if (!videoRef.current || videoRef.current.readyState < 2 || !ctx) return;
       try {
         ctx.drawImage(videoRef.current, 0, 0, 480, 270);
-        const photoDataUri = canvas.toDataURL('image/jpeg', 0.6); // ~30KB
+        const photoDataUri = canvas.toDataURL('image/jpeg', 0.55);
 
         const result = await detectExamMalpractice({ photoDataUri });
         if (result && Array.isArray(result.violations)) {
           result.violations.forEach(v => {
-            triggerViolationWithCooldown(v, 7000);
+            triggerViolationWithCooldown(v, 6000);
           });
         }
       } catch {
@@ -222,7 +266,7 @@ export function ProctoringHandler({
       }
     };
 
-    const cloudInterval = setInterval(runCloudGeminiCycle, 12000);
+    const cloudInterval = setInterval(runCloudGeminiCycle, 10000);
     return () => clearInterval(cloudInterval);
   }, [enabled, videoRef, triggerViolationWithCooldown]);
 
@@ -235,9 +279,19 @@ export function ProctoringHandler({
           <ShieldAlert className="w-4 h-4 text-primary" />
           <CardTitle className="text-sm font-semibold">Integrity & Proctoring Engine</CardTitle>
         </div>
-        <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground font-mono">
-          <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-          <span>Active</span>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setAudioAlertsEnabled(!audioAlertsEnabled)}
+            title={audioAlertsEnabled ? "Audio chimes active" : "Audio muted"}
+            className="text-muted-foreground hover:text-foreground transition-colors p-0.5 rounded"
+          >
+            {audioAlertsEnabled ? <Volume2 className="w-3.5 h-3.5 text-primary" /> : <VolumeX className="w-3.5 h-3.5" />}
+          </button>
+          <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground font-mono">
+            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+            <span>Active</span>
+          </div>
         </div>
       </CardHeader>
       <CardContent className="flex-1 flex flex-col gap-4 p-4">
@@ -248,7 +302,7 @@ export function ProctoringHandler({
             <span>{riskLevel} Malpractice Risk</span>
           </div>
           <p className="text-xs text-muted-foreground">
-            {isProcessing && lastDetectedObj ? `Flagged: ${lastDetectedObj}` : currentRiskStyle.text}
+            {isProcessing && lastDetectedObj ? `⚠️ Flagged: ${lastDetectedObj}` : currentRiskStyle.text}
           </p>
           <div className="space-y-1.5 pt-1">
             <Progress
@@ -273,15 +327,15 @@ export function ProctoringHandler({
           </div>
         </div>
 
-        {/* AI Vision Model Banner */}
+        {/* AI Vision Model Status */}
         <div className="text-[11px] bg-primary/5 text-muted-foreground border border-primary/20 rounded-lg p-2.5 flex items-center justify-between">
           <div className="flex items-center gap-1.5 font-medium text-foreground">
             <Activity className="w-3.5 h-3.5 text-primary" />
-            <span>Computer Vision Status</span>
+            <span>Dual Vision Engine</span>
           </div>
           <span className="text-emerald-600 font-semibold flex items-center gap-1">
             <Sparkles className="w-3 h-3" />
-            {isAiReady || isVisionModelReady() ? 'TensorFlow Ready' : 'Loading CV...'}
+            {isAiReady || isVisionModelReady() ? 'TensorFlow + Optical Ready' : 'Optical Active'}
           </span>
         </div>
 

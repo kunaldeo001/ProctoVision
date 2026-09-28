@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Video, VideoOff, UserCheck, UserX, Users, Smartphone, EyeOff, Sparkles, Cpu } from 'lucide-react';
+import { Video, VideoOff, UserCheck, UserX, Users, Smartphone, EyeOff, Sparkles, Cpu, SlidersHorizontal } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { cn } from '@/lib/utils';
@@ -12,6 +12,8 @@ type WebcamFeedProps = {
   videoRef: React.RefObject<HTMLVideoElement | null>;
   overlayCanvasRef?: React.RefObject<HTMLCanvasElement | null>;
   onReady: (isReady: boolean) => void;
+  sensitivity?: 'standard' | 'high' | 'ultra';
+  onSensitivityChange?: (s: 'standard' | 'high' | 'ultra') => void;
   proctoringStatus: {
     noFaceDetected: boolean;
     multiplePeopleDetected: boolean;
@@ -25,6 +27,8 @@ export function WebcamFeed({
   videoRef,
   overlayCanvasRef,
   onReady,
+  sensitivity = 'high',
+  onSensitivityChange,
   proctoringStatus,
   onSimulateViolation,
 }: WebcamFeedProps) {
@@ -98,14 +102,14 @@ export function WebcamFeed({
             variant="outline"
             className={cn(
               "text-[10px] h-5 px-1.5 gap-1 font-mono transition-colors",
-              phoneDetected ? "border-red-500 text-red-600 bg-red-500/10 animate-pulse" :
+              phoneDetected ? "border-red-500 text-red-600 bg-red-500/10 animate-pulse font-bold" :
               multiplePeopleDetected ? "border-orange-500 text-orange-600 bg-orange-500/10" :
               noFaceDetected ? "border-red-500 text-red-600 bg-red-500/10" :
               "border-emerald-500 text-emerald-600 bg-emerald-500/10"
             )}
           >
             <Cpu className="w-2.5 h-2.5" />
-            {phoneDetected ? "PHONE ACTIVE" : multiplePeopleDetected ? "MULTI PERSON" : noFaceDetected ? "NO FACE" : "CV ACTIVE"}
+            {phoneDetected ? "PHONE DETECTED" : multiplePeopleDetected ? "MULTI PERSON" : noFaceDetected ? "NO FACE" : "CV ACTIVE"}
           </Badge>
         </div>
       </CardHeader>
@@ -142,12 +146,12 @@ export function WebcamFeed({
 
           {/* Real-time Warning Banners floating over video */}
           {isReady && phoneDetected && (
-            <div className="absolute top-2 inset-x-2 bg-red-600 text-white px-2.5 py-1.5 rounded-md flex items-center justify-between text-xs font-bold shadow-xl animate-bounce z-20 border border-white/20">
+            <div className="absolute top-2 inset-x-2 bg-red-600 text-white px-2.5 py-1.5 rounded-md flex items-center justify-between text-xs font-bold shadow-xl animate-pulse z-20 border-2 border-white">
               <div className="flex items-center gap-1.5">
-                <Smartphone className="w-4 h-4 text-white animate-pulse" />
-                <span>MOBILE PHONE DETECTED!</span>
+                <Smartphone className="w-4 h-4 text-white animate-bounce" />
+                <span>🚨 MOBILE PHONE DETECTED!</span>
               </div>
-              <span className="text-[10px] bg-black/30 px-1.5 py-0.5 rounded text-white tracking-wide">+40 PTS</span>
+              <span className="text-[10px] bg-black/40 px-1.5 py-0.5 rounded text-white tracking-wide font-mono">+40 PTS</span>
             </div>
           )}
 
@@ -190,8 +194,8 @@ export function WebcamFeed({
 
           {/* Bottom Feed Metadata */}
           <div className="absolute bottom-1.5 inset-x-2 flex items-center justify-between text-[10px] text-white/70 px-1 z-20 pointer-events-none drop-shadow">
-            <span>TensorFlow CV + Gemini AI</span>
-            <span>Live 640x480</span>
+            <span>TensorFlow + Optical CV</span>
+            <span className="capitalize">{sensitivity} Mode</span>
           </div>
         </div>
 
@@ -204,12 +208,38 @@ export function WebcamFeed({
           </Alert>
         )}
 
+        {/* Sensitivity Switcher */}
+        {onSensitivityChange && (
+          <div className="mt-2.5 pt-2 border-t flex items-center justify-between text-[11px]">
+            <span className="text-muted-foreground flex items-center gap-1 font-medium">
+              <SlidersHorizontal className="w-3 h-3" /> Sensitivity:
+            </span>
+            <div className="flex items-center gap-1 bg-muted p-0.5 rounded-md">
+              {(['standard', 'high', 'ultra'] as const).map(s => (
+                <button
+                  key={s}
+                  type="button"
+                  onClick={() => onSensitivityChange(s)}
+                  className={cn(
+                    "px-2 py-0.5 rounded text-[10px] font-semibold capitalize transition-all",
+                    sensitivity === s
+                      ? "bg-background text-foreground shadow-sm"
+                      : "text-muted-foreground hover:text-foreground"
+                  )}
+                >
+                  {s === 'high' ? 'High (Auto)' : s}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
         {/* AI Proctoring Quick Controls & Testing Bar */}
-        <div className="mt-3 pt-2.5 border-t space-y-2">
+        <div className="mt-2 pt-2 border-t space-y-1.5">
           <div className="flex items-center justify-between">
             <span className="text-[11px] text-muted-foreground flex items-center gap-1 font-medium">
               <Sparkles className="w-3 h-3 text-primary" />
-              Test Malpractice Triggers
+              Instant Malpractice Simulation
             </span>
             <button
               type="button"
@@ -225,7 +255,7 @@ export function WebcamFeed({
               <button
                 type="button"
                 onClick={() => onSimulateViolation?.('PHONE_DETECTED')}
-                className="flex items-center justify-center gap-1 text-[10px] font-semibold py-1.5 px-2 rounded bg-red-500/10 text-red-600 hover:bg-red-500/20 border border-red-500/20 transition-all"
+                className="flex items-center justify-center gap-1 text-[10px] font-bold py-1.5 px-2 rounded bg-red-500/15 text-red-600 hover:bg-red-500/25 border border-red-500/30 transition-all shadow-sm"
               >
                 <Smartphone className="w-3 h-3" /> Test Phone (+40)
               </button>
