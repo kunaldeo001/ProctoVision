@@ -1,29 +1,40 @@
-
 'use client';
 
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Video, VideoOff, UserCheck, UserX, Users, Smartphone, EyeOff } from 'lucide-react';
+import { Video, VideoOff, UserCheck, UserX, Users, Smartphone, EyeOff, Sparkles, Cpu } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { cn } from '@/lib/utils';
+import { Badge } from '@/components/ui/badge';
 
 type WebcamFeedProps = {
-    videoRef: React.RefObject<HTMLVideoElement>;
-    onReady: (isReady: boolean) => void;
-    proctoringStatus: {
-        noFaceDetected: boolean;
-        multiplePeopleDetected: boolean;
-        phoneDetected: boolean;
-        gazeAway: boolean;
-    }
+  videoRef: React.RefObject<HTMLVideoElement | null>;
+  overlayCanvasRef?: React.RefObject<HTMLCanvasElement | null>;
+  onReady: (isReady: boolean) => void;
+  proctoringStatus: {
+    noFaceDetected: boolean;
+    multiplePeopleDetected: boolean;
+    phoneDetected: boolean;
+    gazeAway: boolean;
+  };
+  onSimulateViolation?: (type: 'PHONE_DETECTED' | 'MULTIPLE_PEOPLE' | 'NO_FACE_DETECTED' | 'GAZE_AWAY') => void;
 };
 
-export function WebcamFeed({ videoRef, onReady, proctoringStatus }: WebcamFeedProps) {
+export function WebcamFeed({
+  videoRef,
+  overlayCanvasRef,
+  onReady,
+  proctoringStatus,
+  onSimulateViolation,
+}: WebcamFeedProps) {
   const [hasCameraPermission, setHasCameraPermission] = useState<boolean | null>(null);
+  const [showSimControls, setShowSimControls] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
+    let streamInstance: MediaStream | null = null;
+
     const getCameraPermission = async () => {
       if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
         console.error('Camera API not available.');
@@ -31,13 +42,20 @@ export function WebcamFeed({ videoRef, onReady, proctoringStatus }: WebcamFeedPr
         return;
       }
       try {
-        const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+        const stream = await navigator.mediaDevices.getUserMedia({
+          video: {
+            width: { ideal: 640 },
+            height: { ideal: 480 },
+            facingMode: 'user',
+          },
+        });
+        streamInstance = stream;
         setHasCameraPermission(true);
 
         if (videoRef.current) {
           videoRef.current.srcObject = stream;
           videoRef.current.onloadedmetadata = () => {
-             onReady(true);
+            onReady(true);
           };
         }
       } catch (error) {
@@ -53,90 +71,188 @@ export function WebcamFeed({ videoRef, onReady, proctoringStatus }: WebcamFeedPr
     };
 
     getCameraPermission();
-    
-    return () => {
-        if (videoRef.current && videoRef.current.srcObject) {
-            const stream = videoRef.current.srcObject as MediaStream;
-            stream.getTracks().forEach(track => track.stop());
-        }
-    }
 
+    return () => {
+      if (streamInstance) {
+        streamInstance.getTracks().forEach(track => track.stop());
+      } else if (videoRef.current && videoRef.current.srcObject) {
+        const stream = videoRef.current.srcObject as MediaStream;
+        stream.getTracks().forEach(track => track.stop());
+      }
+    };
   }, [videoRef, onReady, toast]);
 
   const isReady = hasCameraPermission === true && videoRef.current?.srcObject != null;
-  const {multiplePeopleDetected, phoneDetected, noFaceDetected, gazeAway} = proctoringStatus;
+  const { multiplePeopleDetected, phoneDetected, noFaceDetected, gazeAway } = proctoringStatus;
+  const hasActiveViolation = multiplePeopleDetected || phoneDetected || noFaceDetected || gazeAway;
 
   return (
-    <Card>
-      <CardHeader className="flex-row items-center gap-2 space-y-0">
-        <Video className="w-5 h-5 text-primary" />
-        <CardTitle className="text-lg">Webcam Feed</CardTitle>
+    <Card className="overflow-hidden border-border/80 shadow-md">
+      <CardHeader className="flex-row items-center justify-between space-y-0 py-3 px-4 border-b bg-muted/30">
+        <div className="flex items-center gap-2">
+          <Video className="w-4 h-4 text-primary" />
+          <CardTitle className="text-sm font-semibold">Live Camera & AI Vision</CardTitle>
+        </div>
+        <div className="flex items-center gap-1.5">
+          <Badge
+            variant="outline"
+            className={cn(
+              "text-[10px] h-5 px-1.5 gap-1 font-mono transition-colors",
+              phoneDetected ? "border-red-500 text-red-600 bg-red-500/10 animate-pulse" :
+              multiplePeopleDetected ? "border-orange-500 text-orange-600 bg-orange-500/10" :
+              noFaceDetected ? "border-red-500 text-red-600 bg-red-500/10" :
+              "border-emerald-500 text-emerald-600 bg-emerald-500/10"
+            )}
+          >
+            <Cpu className="w-2.5 h-2.5" />
+            {phoneDetected ? "PHONE ACTIVE" : multiplePeopleDetected ? "MULTI PERSON" : noFaceDetected ? "NO FACE" : "CV ACTIVE"}
+          </Badge>
+        </div>
       </CardHeader>
-      <CardContent>
-        <div className="aspect-video bg-muted-foreground/20 rounded-md flex items-center justify-center overflow-hidden relative">
-          <video ref={videoRef} className={cn("w-full aspect-video", !isReady && "hidden")} autoPlay muted playsInline />
+      <CardContent className="p-3">
+        <div className="aspect-video bg-slate-950 rounded-lg flex items-center justify-center overflow-hidden relative border border-border shadow-inner">
+          <video
+            ref={videoRef}
+            className={cn("w-full h-full object-cover", !isReady && "hidden")}
+            autoPlay
+            muted
+            playsInline
+          />
+          {overlayCanvasRef && (
+            <canvas
+              ref={overlayCanvasRef}
+              className="absolute inset-0 w-full h-full pointer-events-none z-10"
+            />
+          )}
+
           {!isReady && hasCameraPermission === false && (
+            <div className="flex flex-col items-center gap-2 text-muted-foreground/80 p-4 text-center">
+              <VideoOff className="w-10 h-10 text-destructive" />
+              <span className="text-xs font-semibold text-destructive">Camera Access Denied</span>
+              <p className="text-[11px] text-muted-foreground">Allow webcam permissions in your browser.</p>
+            </div>
+          )}
+
+          {!isReady && hasCameraPermission === null && (
             <div className="flex flex-col items-center gap-2 text-muted-foreground/80">
-                <VideoOff className="w-12 h-12" />
-                <span className="text-sm font-medium">Camera Disabled</span>
-            </div>
-          )}
-           {!isReady && hasCameraPermission === null && (
-            <div className="flex flex-col items-center gap-2 text-muted-foreground/80">
-                <Video className="w-12 h-12 animate-pulse" />
-                <span className="text-sm font-medium">Initializing...</span>
+              <Video className="w-10 h-10 animate-pulse text-primary" />
+              <span className="text-xs font-medium">Initializing camera & AI models...</span>
             </div>
           )}
 
-          {isReady && multiplePeopleDetected && (
-            <div className="absolute inset-0 bg-destructive/80 flex flex-col items-center justify-center text-destructive-foreground p-4 text-center transition-all duration-300">
-                <Users className="w-12 h-12 mb-2"/>
-                <p className="font-semibold">Multiple People Detected</p>
-                <p className="text-sm">Only you should be in the camera view.</p>
+          {/* Real-time Warning Banners floating over video */}
+          {isReady && phoneDetected && (
+            <div className="absolute top-2 inset-x-2 bg-red-600 text-white px-2.5 py-1.5 rounded-md flex items-center justify-between text-xs font-bold shadow-xl animate-bounce z-20 border border-white/20">
+              <div className="flex items-center gap-1.5">
+                <Smartphone className="w-4 h-4 text-white animate-pulse" />
+                <span>MOBILE PHONE DETECTED!</span>
+              </div>
+              <span className="text-[10px] bg-black/30 px-1.5 py-0.5 rounded text-white tracking-wide">+40 PTS</span>
             </div>
           )}
 
-          {isReady && !multiplePeopleDetected && phoneDetected && (
-            <div className="absolute inset-0 bg-destructive/80 flex flex-col items-center justify-center text-destructive-foreground p-4 text-center transition-all duration-300">
-                <Smartphone className="w-12 h-12 mb-2"/>
-                <p className="font-semibold">Phone Detected</p>
-                <p className="text-sm">Mobile phones are not allowed during the exam.</p>
-            </div>
-          )}
-          
-          {isReady && !multiplePeopleDetected && !phoneDetected && gazeAway && (
-            <div className="absolute inset-0 bg-yellow-500/80 flex flex-col items-center justify-center text-black p-4 text-center transition-all duration-300">
-                <EyeOff className="w-12 h-12 mb-2"/>
-                <p className="font-semibold">Gaze Detected Away</p>
-                <p className="text-sm">Please keep your eyes on the screen.</p>
+          {isReady && !phoneDetected && multiplePeopleDetected && (
+            <div className="absolute top-2 inset-x-2 bg-orange-600 text-white px-2.5 py-1.5 rounded-md flex items-center justify-between text-xs font-bold shadow-xl z-20 border border-white/20">
+              <div className="flex items-center gap-1.5">
+                <Users className="w-4 h-4 text-white" />
+                <span>MULTIPLE PEOPLE IN FRAME</span>
+              </div>
+              <span className="text-[10px] bg-black/30 px-1.5 py-0.5 rounded text-white tracking-wide">+30 PTS</span>
             </div>
           )}
 
-          {isReady && !multiplePeopleDetected && !phoneDetected && !gazeAway && noFaceDetected && (
-             <div className="absolute inset-0 bg-destructive/80 flex flex-col items-center justify-center text-destructive-foreground p-4 text-center transition-all duration-300">
-                <UserX className="w-12 h-12 mb-2"/>
-                <p className="font-semibold">No Face Detected</p>
-                <p className="text-sm">Please ensure your face is clearly visible.</p>
+          {isReady && !phoneDetected && !multiplePeopleDetected && noFaceDetected && (
+            <div className="absolute top-2 inset-x-2 bg-red-600 text-white px-2.5 py-1.5 rounded-md flex items-center justify-between text-xs font-bold shadow-xl z-20 border border-white/20">
+              <div className="flex items-center gap-1.5">
+                <UserX className="w-4 h-4 text-white" />
+                <span>NO FACE DETECTED</span>
+              </div>
+              <span className="text-[10px] bg-black/30 px-1.5 py-0.5 rounded text-white tracking-wide">+25 PTS</span>
             </div>
           )}
 
-          {isReady && !noFaceDetected && !multiplePeopleDetected && !phoneDetected && !gazeAway && (
-            <div className="absolute top-2 left-2 bg-green-500/90 text-white text-xs px-2 py-1 rounded-full flex items-center gap-1 transition-all duration-300">
-                <UserCheck className="w-4 h-4" />
-                <span className="font-medium">Proctoring Active</span>
+          {isReady && !phoneDetected && !multiplePeopleDetected && !noFaceDetected && gazeAway && (
+            <div className="absolute top-2 inset-x-2 bg-amber-500 text-black px-2.5 py-1.5 rounded-md flex items-center justify-between text-xs font-bold shadow-xl z-20 border border-black/20">
+              <div className="flex items-center gap-1.5">
+                <EyeOff className="w-4 h-4 text-black" />
+                <span>EYES OFF SCREEN</span>
+              </div>
+              <span className="text-[10px] bg-black/20 px-1.5 py-0.5 rounded text-black tracking-wide">+10 PTS</span>
+            </div>
+          )}
+
+          {isReady && !hasActiveViolation && (
+            <div className="absolute top-2 left-2 bg-emerald-600/90 text-white text-[10px] font-semibold px-2 py-0.5 rounded flex items-center gap-1 z-20 shadow-md backdrop-blur-sm">
+              <UserCheck className="w-3 h-3" />
+              <span>Identity Verified</span>
+            </div>
+          )}
+
+          {/* Bottom Feed Metadata */}
+          <div className="absolute bottom-1.5 inset-x-2 flex items-center justify-between text-[10px] text-white/70 px-1 z-20 pointer-events-none drop-shadow">
+            <span>TensorFlow CV + Gemini AI</span>
+            <span>Live 640x480</span>
+          </div>
+        </div>
+
+        {hasCameraPermission === false && (
+          <Alert variant="destructive" className="mt-3">
+            <AlertTitle className="text-xs">Camera Required</AlertTitle>
+            <AlertDescription className="text-xs">
+              Please grant camera permissions to enable automated proctoring.
+            </AlertDescription>
+          </Alert>
+        )}
+
+        {/* AI Proctoring Quick Controls & Testing Bar */}
+        <div className="mt-3 pt-2.5 border-t space-y-2">
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] text-muted-foreground flex items-center gap-1 font-medium">
+              <Sparkles className="w-3 h-3 text-primary" />
+              Test Malpractice Triggers
+            </span>
+            <button
+              type="button"
+              onClick={() => setShowSimControls(!showSimControls)}
+              className="text-[10px] text-primary hover:underline font-medium"
+            >
+              {showSimControls ? 'Hide test tools' : 'Show test tools'}
+            </button>
+          </div>
+
+          {showSimControls && (
+            <div className="grid grid-cols-2 gap-1.5 pt-1">
+              <button
+                type="button"
+                onClick={() => onSimulateViolation?.('PHONE_DETECTED')}
+                className="flex items-center justify-center gap-1 text-[10px] font-semibold py-1.5 px-2 rounded bg-red-500/10 text-red-600 hover:bg-red-500/20 border border-red-500/20 transition-all"
+              >
+                <Smartphone className="w-3 h-3" /> Test Phone (+40)
+              </button>
+              <button
+                type="button"
+                onClick={() => onSimulateViolation?.('MULTIPLE_PEOPLE')}
+                className="flex items-center justify-center gap-1 text-[10px] font-semibold py-1.5 px-2 rounded bg-orange-500/10 text-orange-600 hover:bg-orange-500/20 border border-orange-500/20 transition-all"
+              >
+                <Users className="w-3 h-3" /> Test Multi (+30)
+              </button>
+              <button
+                type="button"
+                onClick={() => onSimulateViolation?.('NO_FACE_DETECTED')}
+                className="flex items-center justify-center gap-1 text-[10px] font-semibold py-1.5 px-2 rounded bg-red-500/10 text-red-600 hover:bg-red-500/20 border border-red-500/20 transition-all"
+              >
+                <UserX className="w-3 h-3" /> Test No Face (+25)
+              </button>
+              <button
+                type="button"
+                onClick={() => onSimulateViolation?.('GAZE_AWAY')}
+                className="flex items-center justify-center gap-1 text-[10px] font-semibold py-1.5 px-2 rounded bg-amber-500/10 text-amber-700 hover:bg-amber-500/20 border border-amber-500/20 transition-all"
+              >
+                <EyeOff className="w-3 h-3" /> Test Gaze (+10)
+              </button>
             </div>
           )}
         </div>
-        
-        {hasCameraPermission === false && (
-            <Alert variant="destructive" className="mt-4">
-                <AlertTitle>Camera Access Required</AlertTitle>
-                <AlertDescription>
-                    Please allow camera access to use this feature.
-                </AlertDescription>
-            </Alert>
-        )}
-         <p className="text-xs text-muted-foreground mt-2 text-center">Webcam access is mandatory for proctoring.</p>
       </CardContent>
     </Card>
   );

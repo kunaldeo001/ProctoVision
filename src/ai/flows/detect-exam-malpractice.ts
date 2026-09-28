@@ -41,7 +41,16 @@ export type DetectExamMalpracticeOutput = z.infer<typeof DetectExamMalpracticeOu
 export async function detectExamMalpractice(
   input: DetectExamMalpracticeInput
 ): Promise<DetectExamMalpracticeOutput> {
-  return detectExamMalpracticeFlow(input);
+  const hasKey = !!(process.env.GEMINI_API_KEY || process.env.GOOGLE_GENAI_API_KEY);
+  if (!hasKey) {
+    return { violations: [] };
+  }
+  try {
+    return await detectExamMalpracticeFlow(input);
+  } catch (err) {
+    console.warn("Gemini multimodal malpractice check skipped or encountered error:", err);
+    return { violations: [] };
+  }
 }
 
 const detectExamMalpracticePrompt = ai.definePrompt({

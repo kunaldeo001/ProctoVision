@@ -23,6 +23,7 @@ export default function ExamTakePage() {
   const student = mockUsers.find(u => u.role === 'student');
   
   const videoRef = useRef<HTMLVideoElement>(null);
+  const overlayCanvasRef = useRef<HTMLCanvasElement>(null);
   const [isCameraReady, setIsCameraReady] = useState(false);
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [answers, setAnswers] = useState<Record<string, string | number[]>>({});
@@ -95,6 +96,26 @@ export default function ExamTakePage() {
       setWarning75Issued(true);
     }
   }, [malpracticeChecker, warning75Issued, toast, handleSubmit]);
+
+  const handleSimulateViolation = useCallback((type: 'PHONE_DETECTED' | 'MULTIPLE_PEOPLE' | 'NO_FACE_DETECTED' | 'GAZE_AWAY') => {
+    addMalpracticeEvent(type);
+    setProctoringStatus(prev => ({
+      ...prev,
+      phoneDetected: type === 'PHONE_DETECTED',
+      multiplePeopleDetected: type === 'MULTIPLE_PEOPLE',
+      noFaceDetected: type === 'NO_FACE_DETECTED',
+      gazeAway: type === 'GAZE_AWAY',
+    }));
+    setTimeout(() => {
+      setProctoringStatus(prev => ({
+        ...prev,
+        phoneDetected: false,
+        multiplePeopleDetected: false,
+        noFaceDetected: false,
+        gazeAway: false,
+      }));
+    }, 4500);
+  }, [addMalpracticeEvent]);
 
   // Countdown timer
   useEffect(() => {
@@ -409,12 +430,15 @@ export default function ExamTakePage() {
         <aside className="w-80 border-l bg-background p-5 flex flex-col gap-5 overflow-y-auto shadow-2xl">
           <WebcamFeed
             videoRef={videoRef}
+            overlayCanvasRef={overlayCanvasRef}
             onReady={setIsCameraReady}
             proctoringStatus={proctoringStatus}
+            onSimulateViolation={handleSimulateViolation}
           />
           
           <ProctoringHandler
             videoRef={videoRef}
+            overlayCanvasRef={overlayCanvasRef}
             enabled={isCameraReady}
             onDetectionUpdate={setProctoringStatus}
             addMalpracticeEvent={addMalpracticeEvent}
