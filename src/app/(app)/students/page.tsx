@@ -7,6 +7,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
+import Link from 'next/link';
 import { Progress } from '@/components/ui/progress';
 import { Search, Users, TrendingUp, ShieldCheck, BookOpen, Mail } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -93,7 +94,8 @@ export default function StudentsPage() {
         {filtered.map(({ student, reports, enrolledExams, completedExams, avgScore, avgIntegrity, overallRisk }) => {
           const risk = riskConfig[overallRisk];
           return (
-            <Card key={student.id} className="shadow-sm hover:shadow-md transition-shadow">
+            <Link key={student.id} href={`/students/${student.id}`} className="block group">
+            <Card key={student.id} className="shadow-sm hover:shadow-md transition-all hover:border-primary/30">
               <CardContent className="p-5">
                 {/* Top row */}
                 <div className="flex items-start justify-between mb-4">
@@ -166,6 +168,7 @@ export default function StudentsPage() {
                 </div>
               </CardContent>
             </Card>
+            </Link>
           );
         })}
         {filtered.length === 0 && (

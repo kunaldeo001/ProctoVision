@@ -15,7 +15,8 @@ import {
   DropdownMenuTrigger,
   DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
-import { MoreHorizontal, Search, Trash2, Edit } from "lucide-react";
+import { MoreHorizontal, Search, Trash2, Edit, Eye } from "lucide-react";
+import { QuestionPreviewModal } from './question-preview-modal';
 
 type QuestionListProps = {
   questions: Question[];
@@ -32,6 +33,7 @@ export function QuestionList({ questions, onDelete }: QuestionListProps) {
   const [search, setSearch] = useState("");
   const [topicFilter, setTopicFilter] = useState<string>("all");
   const [difficultyFilter, setDifficultyFilter] = useState<string>("all");
+  const [previewQuestion, setPreviewQuestion] = useState<Question | null>(null);
 
   const topics = useMemo(() => Array.from(new Set(questions.map(q => q.topic))), [questions]);
 
@@ -55,6 +57,7 @@ export function QuestionList({ questions, onDelete }: QuestionListProps) {
   }, [questions, search, topicFilter, difficultyFilter]);
 
   return (
+    <>
     <Card className="shadow-sm border-muted">
       <CardHeader className="pb-4">
         <CardTitle className="text-xl">Questions</CardTitle>
@@ -115,7 +118,7 @@ export function QuestionList({ questions, onDelete }: QuestionListProps) {
                 </TableRow>
               ) : (
                 filteredQuestions.map((question) => (
-                  <TableRow key={question.id} className="group hover:bg-muted/30">
+                  <TableRow key={question.id} className="group hover:bg-muted/30 cursor-pointer" onClick={() => setPreviewQuestion(question)}>
                     <TableCell className="font-medium">
                       <div className="line-clamp-2" title={question.text}>{question.text}</div>
                     </TableCell>
@@ -126,25 +129,33 @@ export function QuestionList({ questions, onDelete }: QuestionListProps) {
                         {question.difficulty}
                       </Badge>
                     </TableCell>
-                    <TableCell className="text-right">
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" className="h-8 w-8 p-0 opacity-100 sm:opacity-50 group-hover:opacity-100 transition-opacity">
-                            <span className="sr-only">Open menu</span>
-                            <MoreHorizontal className="h-4 w-4" />
+                      <TableCell className="text-right">
+                        <div className="flex items-center justify-end gap-1">
+                          <Button variant="ghost" size="sm" className="h-8 w-8 p-0 opacity-50 group-hover:opacity-100" onClick={e => { e.stopPropagation(); setPreviewQuestion(question); }}>
+                            <Eye className="h-4 w-4" />
                           </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem className="cursor-pointer">
-                            <Edit className="mr-2 h-4 w-4" /> Edit
-                          </DropdownMenuItem>
-                          <DropdownMenuSeparator />
-                          <DropdownMenuItem className="text-destructive focus:text-destructive cursor-pointer" onClick={() => onDelete(question.id)}>
-                            <Trash2 className="mr-2 h-4 w-4" /> Delete
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </TableCell>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" className="h-8 w-8 p-0 opacity-100 sm:opacity-50 group-hover:opacity-100 transition-opacity" onClick={e => e.stopPropagation()}>
+                              <span className="sr-only">Open menu</span>
+                              <MoreHorizontal className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem className="cursor-pointer" onClick={e => { e.stopPropagation(); setPreviewQuestion(question); }}>
+                              <Eye className="mr-2 h-4 w-4" /> Preview
+                            </DropdownMenuItem>
+                            <DropdownMenuItem className="cursor-pointer">
+                              <Edit className="mr-2 h-4 w-4" /> Edit
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem className="text-destructive focus:text-destructive cursor-pointer" onClick={e => { e.stopPropagation(); onDelete(question.id); }}>
+                              <Trash2 className="mr-2 h-4 w-4" /> Delete
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                        </div>
+                      </TableCell>
                   </TableRow>
                 ))
               )}
@@ -153,5 +164,11 @@ export function QuestionList({ questions, onDelete }: QuestionListProps) {
         </div>
       </CardContent>
     </Card>
+    <QuestionPreviewModal
+      question={previewQuestion}
+      open={!!previewQuestion}
+      onOpenChange={open => { if (!open) setPreviewQuestion(null); }}
+    />
+  </>
   );
 }
