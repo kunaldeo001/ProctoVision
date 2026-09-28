@@ -16,7 +16,7 @@ import {
   DropdownMenuTrigger,
   DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
-import { MoreHorizontal, Search, Trash2, Copy, Archive, Edit } from "lucide-react";
+import { MoreHorizontal, Search, Trash2, Copy, Archive, Edit, ExternalLink } from "lucide-react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -151,7 +151,9 @@ export function ExamList({ exams, onDelete, onArchive, onDuplicate }: ExamListPr
                   <TableRow key={exam.id} className="group hover:bg-muted/30">
                     <TableCell className="font-medium">
                         <div className="flex flex-col">
-                            <span>{exam.title}</span>
+                            <Link href={`/exams/${exam.id}`} className="hover:text-primary hover:underline transition-colors">
+                              {exam.title}
+                            </Link>
                             <span className="text-xs text-muted-foreground line-clamp-1">{exam.description || 'No description'}</span>
                         </div>
                     </TableCell>
@@ -173,6 +175,10 @@ export function ExamList({ exams, onDelete, onArchive, onDuplicate }: ExamListPr
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end" className="w-48">
+                          <DropdownMenuItem asChild>
+                            <Link href={`/exams/${exam.id}`} className="flex items-center"><ExternalLink className="mr-2 h-4 w-4" />View Details</Link>
+                          </DropdownMenuItem>
+                          <DropdownMenuSeparator />
                           {exam.status === 'live' && (
                             <DropdownMenuItem asChild>
                               <Link href={`/dashboard/exams/${exam.id}/monitor`}>Monitor Session</Link>

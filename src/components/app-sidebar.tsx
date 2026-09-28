@@ -10,6 +10,7 @@ import {
   SidebarMenu,
   SidebarMenuItem,
   SidebarMenuButton,
+  SidebarSeparator,
 } from '@/components/ui/sidebar';
 import {
   LayoutDashboard,
@@ -19,7 +20,10 @@ import {
   CircleUser,
   LogOut,
   FilePen,
-  Database,
+  HelpCircle,
+  Users,
+  BarChart2,
+  Command,
 } from 'lucide-react';
 import { ProctoVisionLogo } from '@/components/icons/proctovision-logo';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -33,13 +37,16 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Button } from '@/components/ui/button';
 import { mockUsers } from '@/lib/mock-data';
+import { NotificationBell } from '@/components/notification-bell';
+import { GlobalSearch } from '@/components/global-search';
+import { Badge } from '@/components/ui/badge';
 
 const adminUser = mockUsers.find(u => u.role === 'admin');
 
 export function AppSidebar() {
   const pathname = usePathname();
 
-  const menuItems = [
+  const mainMenuItems = [
     {
       href: '/dashboard',
       label: 'Dashboard',
@@ -51,45 +58,61 @@ export function AppSidebar() {
       icon: <BookOpen />,
     },
     {
+      href: '/questions',
+      label: 'Question Bank',
+      icon: <HelpCircle />,
+    },
+    {
+      href: '/students',
+      label: 'Students',
+      icon: <Users />,
+    },
+    {
       href: '/reports',
       label: 'Reports',
       icon: <FileText />,
     },
     {
-      href: '/questions',
-      label: 'Question Bank',
-      icon: <Database />,
-    },
-    {
-      href: '/dashboard/exams/1/take',
-      label: 'Take Exam',
-      icon: <FilePen />,
-    },
-    {
-      href: '/settings',
-      label: 'Settings',
-      icon: <Settings />,
+      href: '/analytics',
+      label: 'Analytics',
+      icon: <BarChart2 />,
     },
   ];
 
+  const takeExamItem = {
+    href: '/dashboard/exams/1/take',
+    label: 'Take Exam (Demo)',
+    icon: <FilePen />,
+  };
+
+  const isActive = (href: string) => {
+    if (href === '/dashboard') return pathname === '/dashboard';
+    return pathname.startsWith(href);
+  };
+
   return (
     <Sidebar>
-      <SidebarHeader className="p-4">
+      <SidebarHeader className="p-4 gap-3">
         <Link href="/dashboard" className="flex items-center gap-2">
           <ProctoVisionLogo className="w-8 h-8 text-sidebar-primary" />
           <span className="text-xl font-semibold font-headline text-sidebar-foreground group-data-[collapsible=icon]:hidden">
             ProctoVision
           </span>
         </Link>
+        {/* Search + Notifications row */}
+        <div className="flex items-center gap-1 group-data-[collapsible=icon]:hidden">
+          <GlobalSearch />
+          <NotificationBell />
+        </div>
       </SidebarHeader>
 
       <SidebarContent className="p-2">
         <SidebarMenu>
-          {menuItems.map((item) => (
+          {mainMenuItems.map((item) => (
             <SidebarMenuItem key={item.href}>
               <Link href={item.href}>
                 <SidebarMenuButton
-                  isActive={pathname.startsWith(item.href) && item.href !== '/dashboard' ? pathname === item.href : pathname === '/dashboard'}
+                  isActive={isActive(item.href)}
                   tooltip={{ children: item.label }}
                 >
                   {item.icon}
@@ -98,6 +121,35 @@ export function AppSidebar() {
               </Link>
             </SidebarMenuItem>
           ))}
+        </SidebarMenu>
+
+        <SidebarSeparator className="my-2" />
+
+        <SidebarMenu>
+          <SidebarMenuItem>
+            <Link href={takeExamItem.href}>
+              <SidebarMenuButton
+                isActive={isActive(takeExamItem.href)}
+                tooltip={{ children: takeExamItem.label }}
+                className="text-accent"
+              >
+                {takeExamItem.icon}
+                <span>{takeExamItem.label}</span>
+                <Badge variant="secondary" className="ml-auto text-[10px] px-1 py-0 h-4 group-data-[collapsible=icon]:hidden">DEMO</Badge>
+              </SidebarMenuButton>
+            </Link>
+          </SidebarMenuItem>
+          <SidebarMenuItem>
+            <Link href="/settings">
+              <SidebarMenuButton
+                isActive={isActive('/settings')}
+                tooltip={{ children: 'Settings' }}
+              >
+                <Settings />
+                <span>Settings</span>
+              </SidebarMenuButton>
+            </Link>
+          </SidebarMenuItem>
         </SidebarMenu>
       </SidebarContent>
 
@@ -108,7 +160,7 @@ export function AppSidebar() {
                <div className="flex items-center gap-3">
                 <Avatar className="h-8 w-8">
                   <AvatarImage src={adminUser?.avatarUrl} alt={adminUser?.name} />
-                  <AvatarFallback>{adminUser?.name.charAt(0)}</AvatarFallback>
+                  <AvatarFallback>{adminUser?.name?.charAt(0)}</AvatarFallback>
                 </Avatar>
                 <div className="group-data-[collapsible=icon]:hidden">
                   <p className="text-sm font-medium text-sidebar-foreground">{adminUser?.name}</p>
@@ -124,9 +176,11 @@ export function AppSidebar() {
               <CircleUser className="mr-2 h-4 w-4" />
               <span>Profile</span>
             </DropdownMenuItem>
-            <DropdownMenuItem>
-              <Settings className="mr-2 h-4 w-4" />
-              <span>Settings</span>
+            <DropdownMenuItem asChild>
+              <Link href="/settings">
+                <Settings className="mr-2 h-4 w-4" />
+                <span>Settings</span>
+              </Link>
             </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem>
