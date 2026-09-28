@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { ShieldAlert, AlertTriangle, CheckCircle, Activity, Sparkles, Volume2, VolumeX } from 'lucide-react';
+import { ShieldAlert, AlertTriangle, CheckCircle, Activity, Sparkles, Volume2, VolumeX, Smartphone } from 'lucide-react';
 import { Progress } from '@/components/ui/progress';
 import type { MalpracticeEvent, RiskLevel, ViolationType } from '@/lib/types';
 import { VIOLATION_DISPLAY_NAMES } from '@/lib/types';
@@ -53,8 +53,8 @@ type ProctoringHandlerProps = {
   riskLevel: RiskLevel;
 };
 
-// Play short acoustic warning chime on severe malpractice
-function playAlertChime() {
+// Play distinct acoustic warning chime on malpractice
+export function playAlertChime(isPhone = false) {
   if (typeof window === 'undefined') return;
   try {
     const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
@@ -63,17 +63,33 @@ function playAlertChime() {
     const osc = ctx.createOscillator();
     const gain = ctx.createGain();
 
-    osc.type = 'triangle';
-    osc.frequency.setValueAtTime(720, ctx.currentTime);
-    osc.frequency.exponentialRampToValueAtTime(440, ctx.currentTime + 0.25);
+    if (isPhone) {
+      // Rapid dual-beep for phone
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(960, ctx.currentTime);
+      osc.frequency.setValueAtTime(640, ctx.currentTime + 0.12);
+      osc.frequency.setValueAtTime(960, ctx.currentTime + 0.24);
 
-    gain.gain.setValueAtTime(0.2, ctx.currentTime);
-    gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.25);
+      gain.gain.setValueAtTime(0.28, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.38);
 
-    osc.connect(gain);
-    gain.connect(ctx.destination);
-    osc.start();
-    osc.stop(ctx.currentTime + 0.25);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start();
+      osc.stop(ctx.currentTime + 0.38);
+    } else {
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(720, ctx.currentTime);
+      osc.frequency.exponentialRampToValueAtTime(440, ctx.currentTime + 0.25);
+
+      gain.gain.setValueAtTime(0.2, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.25);
+
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start();
+      osc.stop(ctx.currentTime + 0.25);
+    }
   } catch {
     // Non-critical audio alert
   }
@@ -105,8 +121,12 @@ export function ProctoringHandler({
   const lastViolationTimeRef = useRef<Record<string, number>>({});
   const consecutiveAbsenceRef = useRef(0);
   const consecutiveGazeRef = useRef(0);
+  const consecutiveMultiPersonRef = useRef(0);
 
-  const triggerViolationWithCooldown = useCallback((type: ViolationType, cooldownMs = 4500) => {
+  // Phone detection latch to ensure warnings stay visible for at least 2.5 seconds
+  const phoneLatchUntilRef = useRef(0);
+
+  const triggerViolationWithCooldown = useCallback((type: ViolationType, cooldownMs = 4000) => {
     const now = Date.now();
     const lastTime = lastViolationTimeRef.current[type] || 0;
     if (now - lastTime >= cooldownMs) {
@@ -114,14 +134,14 @@ export function ProctoringHandler({
       addMalpracticeEventRef.current(type);
 
       if (audioAlertsEnabled) {
-        playAlertChime();
+        playAlertChime(type === 'PHONE_DETECTED');
       }
 
       if (type === 'PHONE_DETECTED') {
         toast({
           variant: 'destructive',
-          title: '🚨 Mobile Phone / Device Detected',
-          description: 'A mobile phone or forbidden device was identified in the camera frame (+40 pts).',
+          title: '🚨 MOBILE PHONE DETECTED!',
+          description: 'A mobile phone or forbidden device was identified in the camera frame (+40 pts penalty). Put it away immediately.',
         });
       } else if (type === 'MULTIPLE_PEOPLE') {
         toast({
@@ -151,7 +171,7 @@ export function ProctoringHandler({
     });
   }, []);
 
-  // Primary Real-time Vision AI Loop (runs every 550ms for instant detection)
+  // Primary Real-time Vision AI Loop (runs every 380ms for ultra-fast, smooth detection)
   useEffect(() => {
     if (!enabled || !videoRef.current) return;
 
@@ -169,52 +189,68 @@ export function ProctoringHandler({
 
         if (isDestroyed) return;
 
+        const now = Date.now();
+        if (analysis.phoneDetected) {
+          // Latch phone detection active for at least 2500ms
+          phoneLatchUntilRef.current = now + 2500;
+        }
+
+        const isEffectivePhone = analysis.phoneDetected || now < phoneLatchUntilRef.current;
+
         // Render HUD bounding boxes if overlay canvas provided
         if (overlayCanvasRef?.current && videoRef.current) {
-          drawDetectionOverlay(overlayCanvasRef.current, videoRef.current, analysis);
+          drawDetectionOverlay(overlayCanvasRef.current, videoRef.current, {
+            ...analysis,
+            phoneDetected: isEffectivePhone,
+          });
         }
 
         // Update parent status
         onDetectionUpdate({
           noFaceDetected: analysis.noFaceDetected,
           multiplePeopleDetected: analysis.multiplePeopleDetected,
-          phoneDetected: analysis.phoneDetected,
+          phoneDetected: isEffectivePhone,
           gazeAway: analysis.gazeAway,
         });
 
         // 1. Phone Detection (immediate priority)
         if (analysis.phoneDetected) {
-          setLastDetectedObj(`Phone (${analysis.phoneConfidence || 88}%)`);
-          triggerViolationWithCooldown('PHONE_DETECTED', 4500);
+          setLastDetectedObj(`Phone (${analysis.phoneConfidence || 92}%)`);
+          triggerViolationWithCooldown('PHONE_DETECTED', 3500);
         }
 
-        // 2. Multiple People Detection
+        // 2. Multiple People Detection (require 3 consecutive cycles ~1.1s)
         if (analysis.multiplePeopleDetected) {
-          setLastDetectedObj(`${analysis.peopleCount} People`);
-          triggerViolationWithCooldown('MULTIPLE_PEOPLE', 4500);
+          consecutiveMultiPersonRef.current += 1;
+          if (consecutiveMultiPersonRef.current >= 3) {
+            setLastDetectedObj(`${analysis.peopleCount} People`);
+            triggerViolationWithCooldown('MULTIPLE_PEOPLE', 4500);
+          }
+        } else {
+          consecutiveMultiPersonRef.current = 0;
         }
 
-        // 3. Absence / No Face
+        // 3. Absence / No Face (require 6 consecutive cycles ~2.3s to avoid blink/frame lag false alarms)
         if (analysis.noFaceDetected) {
           consecutiveAbsenceRef.current += 1;
-          if (consecutiveAbsenceRef.current >= 2) {
+          if (consecutiveAbsenceRef.current >= 6) {
             triggerViolationWithCooldown('NO_FACE_DETECTED', 6000);
           }
         } else {
           consecutiveAbsenceRef.current = 0;
         }
 
-        // 4. Gaze Away
+        // 4. Gaze Away (require 7 consecutive cycles ~2.7s to allow natural question reading)
         if (analysis.gazeAway) {
           consecutiveGazeRef.current += 1;
-          if (consecutiveGazeRef.current >= 2) {
+          if (consecutiveGazeRef.current >= 7) {
             triggerViolationWithCooldown('GAZE_AWAY', 7000);
           }
         } else {
           consecutiveGazeRef.current = 0;
         }
 
-        if (!analysis.phoneDetected && !analysis.multiplePeopleDetected) {
+        if (!isEffectivePhone && !analysis.multiplePeopleDetected) {
           setLastDetectedObj(null);
         }
       } catch (err) {
@@ -226,7 +262,7 @@ export function ProctoringHandler({
       }
     };
 
-    const interval = setInterval(runVisionCycle, 550);
+    const interval = setInterval(runVisionCycle, 380);
 
     return () => {
       isDestroyed = true;
@@ -258,134 +294,103 @@ export function ProctoringHandler({
         const result = await detectExamMalpractice({ photoDataUri });
         if (result && Array.isArray(result.violations)) {
           result.violations.forEach(v => {
-            triggerViolationWithCooldown(v, 6000);
+            triggerViolationWithCooldown(v, 4000);
           });
         }
-      } catch {
-        // Fallback silently if Gemini API key not present
+      } catch (e) {
+        // Silently skip if cloud AI unavailable
       }
     };
 
-    const cloudInterval = setInterval(runCloudGeminiCycle, 10000);
-    return () => clearInterval(cloudInterval);
+    const geminiInterval = setInterval(runCloudGeminiCycle, 10000);
+    return () => clearInterval(geminiInterval);
   }, [enabled, videoRef, triggerViolationWithCooldown]);
 
-  const currentRiskStyle = riskStyles[riskLevel];
+  const style = riskStyles[riskLevel];
+  const maxScore = 100;
+  const scorePercent = Math.min(100, Math.round((totalScore / maxScore) * 100));
 
   return (
-    <Card className="flex-1 flex flex-col border-border/80 shadow-md">
-      <CardHeader className="flex-row items-center justify-between space-y-0 py-3 px-4 border-b bg-muted/30">
+    <Card className="border-border shadow-md">
+      <CardHeader className="py-3 px-4 border-b bg-muted/20 flex flex-row items-center justify-between space-y-0">
         <div className="flex items-center gap-2">
-          <ShieldAlert className="w-4 h-4 text-primary" />
-          <CardTitle className="text-sm font-semibold">Integrity & Proctoring Engine</CardTitle>
+          <Activity className="w-4 h-4 text-primary" />
+          <CardTitle className="text-sm font-semibold">Integrity Monitor</CardTitle>
         </div>
         <div className="flex items-center gap-2">
           <button
             type="button"
             onClick={() => setAudioAlertsEnabled(!audioAlertsEnabled)}
-            title={audioAlertsEnabled ? "Audio chimes active" : "Audio muted"}
-            className="text-muted-foreground hover:text-foreground transition-colors p-0.5 rounded"
+            title={audioAlertsEnabled ? 'Audio warnings active (Click to mute)' : 'Audio warnings muted (Click to unmute)'}
+            className={cn(
+              "p-1 rounded text-xs transition-colors",
+              audioAlertsEnabled ? "text-primary hover:bg-primary/10" : "text-muted-foreground hover:bg-muted"
+            )}
           >
-            {audioAlertsEnabled ? <Volume2 className="w-3.5 h-3.5 text-primary" /> : <VolumeX className="w-3.5 h-3.5" />}
+            {audioAlertsEnabled ? <Volume2 className="w-3.5 h-3.5" /> : <VolumeX className="w-3.5 h-3.5" />}
           </button>
-          <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground font-mono">
-            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-            <span>Active</span>
-          </div>
-        </div>
-      </CardHeader>
-      <CardContent className="flex-1 flex flex-col gap-4 p-4">
-        {/* Risk Level and Score */}
-        <div className="text-center space-y-2 p-3 bg-muted/20 rounded-xl border border-border/50">
-          <div className={cn("flex items-center justify-center gap-2 text-base font-bold", currentRiskStyle.color)}>
-            {currentRiskStyle.icon}
-            <span>{riskLevel} Malpractice Risk</span>
-          </div>
-          <p className="text-xs text-muted-foreground">
-            {isProcessing && lastDetectedObj ? `⚠️ Flagged: ${lastDetectedObj}` : currentRiskStyle.text}
-          </p>
-          <div className="space-y-1.5 pt-1">
-            <Progress
-              value={Math.min(totalScore, 100)}
-              className={cn(
-                "h-2.5 transition-all",
-                totalScore >= 75 ? "[&>div]:bg-red-500" :
-                totalScore >= 40 ? "[&>div]:bg-amber-500" :
-                "[&>div]:bg-primary"
-              )}
-            />
-            <div className="flex items-center justify-between text-xs font-semibold px-1">
-              <span className="text-muted-foreground">Integrity Score</span>
-              <span className={cn(
-                totalScore >= 75 ? "text-red-600 font-bold" :
-                totalScore >= 40 ? "text-amber-600 font-bold" :
-                "text-primary"
-              )}>
-                {totalScore} / 100 pts
-              </span>
-            </div>
-          </div>
-        </div>
-
-        {/* AI Vision Model Status */}
-        <div className="text-[11px] bg-primary/5 text-muted-foreground border border-primary/20 rounded-lg p-2.5 flex items-center justify-between">
-          <div className="flex items-center gap-1.5 font-medium text-foreground">
-            <Activity className="w-3.5 h-3.5 text-primary" />
-            <span>Dual Vision Engine</span>
-          </div>
-          <span className="text-emerald-600 font-semibold flex items-center gap-1">
-            <Sparkles className="w-3 h-3" />
-            {isAiReady || isVisionModelReady() ? 'TensorFlow + Optical Ready' : 'Optical Active'}
+          <span className={cn('text-xs font-bold uppercase flex items-center gap-1', style.color)}>
+            {style.icon}
+            {riskLevel}
           </span>
         </div>
+      </CardHeader>
 
-        {/* Event Log */}
-        <div className="flex-1 flex flex-col min-h-0">
-          <div className="flex items-center justify-between mb-2">
-            <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Violation Timeline</h4>
-            <span className="text-[11px] font-mono bg-muted px-1.5 py-0.5 rounded text-muted-foreground">
-              {events.length} incident{events.length !== 1 ? 's' : ''}
+      <CardContent className="p-4 space-y-3">
+        {/* Risk meter */}
+        <div>
+          <div className="flex justify-between text-xs mb-1 font-medium">
+            <span className="text-muted-foreground">Malpractice Score</span>
+            <span className={cn('font-bold', totalScore > 40 ? 'text-destructive' : 'text-foreground')}>
+              {totalScore} / {maxScore} pts
             </span>
           </div>
-          <ScrollArea className="flex-1 pr-3 -mr-3 border rounded-lg bg-card/50 p-2">
-            <div className="space-y-2">
-              {events.map(event => (
-                <div
-                  key={event.id}
-                  className="flex items-start gap-2.5 p-2 rounded-md bg-muted/30 border border-border/50 text-xs transition-colors hover:bg-muted/50"
-                >
-                  <AlertTriangle className={cn(
-                    "w-4 h-4 mt-0.5 flex-shrink-0",
-                    event.severity === 'high' ? 'text-red-500' :
-                    event.severity === 'medium' ? 'text-amber-500' : 'text-blue-500'
-                  )} />
-                  <div className="flex-1 min-w-0">
-                    <p className="font-semibold text-foreground truncate">
+          <Progress
+            value={scorePercent}
+            className={cn(
+              'h-2',
+              totalScore >= 75 ? '[&>div]:bg-red-500' : totalScore >= 40 ? '[&>div]:bg-amber-500' : '[&>div]:bg-primary'
+            )}
+          />
+        </div>
+
+        {/* Live Detected Target Banner */}
+        {lastDetectedObj && (
+          <div className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg bg-red-500/10 border border-red-500/20 text-red-600 text-xs font-semibold animate-pulse">
+            <Smartphone className="w-3.5 h-3.5 shrink-0" />
+            <span>Active Tracking: {lastDetectedObj}</span>
+          </div>
+        )}
+
+        {/* Violations stream */}
+        <div>
+          <div className="flex items-center justify-between text-xs text-muted-foreground mb-1.5 font-medium">
+            <span>Recorded Incidents ({events.length})</span>
+            {isProcessing && <span className="text-[10px] text-primary flex items-center gap-1">Scanning...</span>}
+          </div>
+          {events.length === 0 ? (
+            <p className="text-xs text-muted-foreground text-center py-2 bg-muted/20 rounded-md">
+              No integrity violations recorded.
+            </p>
+          ) : (
+            <ScrollArea className="h-28 rounded-md border p-2 bg-muted/10">
+              <div className="space-y-1.5">
+                {events.slice(0, 10).map((event, idx) => (
+                  <div
+                    key={event.id || idx}
+                    className="flex items-center justify-between text-xs py-1 px-1.5 rounded bg-background border"
+                  >
+                    <span className="font-medium text-[11px] truncate max-w-[170px]">
                       {VIOLATION_DISPLAY_NAMES[event.type] || event.type}
-                    </p>
-                    <p className="text-[10px] text-muted-foreground">
-                      {formatDistanceToNow(event.timestamp, { addSuffix: true })}
-                    </p>
+                    </span>
+                    <span className="text-[10px] text-destructive font-mono font-bold">
+                      +{event.score}pts
+                    </span>
                   </div>
-                  <div className={cn(
-                    "font-bold text-xs px-1.5 py-0.5 rounded",
-                    event.score >= 30 ? "bg-red-500/10 text-red-600" :
-                    event.score >= 15 ? "bg-amber-500/10 text-amber-700" :
-                    "bg-blue-500/10 text-blue-600"
-                  )}>
-                    +{event.score}
-                  </div>
-                </div>
-              ))}
-              {events.length === 0 && (
-                <div className="text-center py-6 text-xs text-muted-foreground">
-                  <CheckCircle className="w-6 h-6 mx-auto mb-1 text-emerald-500/80" />
-                  <p className="font-medium">No violations recorded.</p>
-                  <p className="text-[10px] text-muted-foreground/80">Proctoring camera is actively monitoring.</p>
-                </div>
-              )}
-            </div>
-          </ScrollArea>
+                ))}
+              </div>
+            </ScrollArea>
+          )}
         </div>
       </CardContent>
     </Card>

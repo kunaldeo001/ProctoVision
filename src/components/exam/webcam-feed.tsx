@@ -2,11 +2,25 @@
 
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Video, VideoOff, UserCheck, UserX, Users, Smartphone, EyeOff, Sparkles, Cpu, SlidersHorizontal } from 'lucide-react';
+import {
+  Video,
+  VideoOff,
+  UserCheck,
+  UserX,
+  Users,
+  Smartphone,
+  EyeOff,
+  Sparkles,
+  Cpu,
+  SlidersHorizontal,
+  Volume2,
+} from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { playAlertChime } from './proctoring-handler';
 
 type WebcamFeedProps = {
   videoRef: React.RefObject<HTMLVideoElement | null>;
@@ -90,6 +104,16 @@ export function WebcamFeed({
   const { multiplePeopleDetected, phoneDetected, noFaceDetected, gazeAway } = proctoringStatus;
   const hasActiveViolation = multiplePeopleDetected || phoneDetected || noFaceDetected || gazeAway;
 
+  const handleTestPhoneAlert = () => {
+    playAlertChime(true);
+    onSimulateViolation?.('PHONE_DETECTED');
+    toast({
+      variant: 'destructive',
+      title: '🚨 Test Phone Alert Triggered',
+      description: 'Phone detection simulation active. Reticle and warning banner demonstrated.',
+    });
+  };
+
   return (
     <Card className="overflow-hidden border-border/80 shadow-md">
       <CardHeader className="flex-row items-center justify-between space-y-0 py-3 px-4 border-b bg-muted/30">
@@ -114,7 +138,10 @@ export function WebcamFeed({
         </div>
       </CardHeader>
       <CardContent className="p-3">
-        <div className="aspect-video bg-slate-950 rounded-lg flex items-center justify-center overflow-hidden relative border border-border shadow-inner">
+        <div className={cn(
+          "aspect-video bg-slate-950 rounded-lg flex items-center justify-center overflow-hidden relative border transition-all shadow-inner",
+          phoneDetected ? "border-red-500 ring-2 ring-red-500/40" : "border-border"
+        )}>
           <video
             ref={videoRef}
             className={cn("w-full h-full object-cover", !isReady && "hidden")}
@@ -208,78 +235,95 @@ export function WebcamFeed({
           </Alert>
         )}
 
-        {/* Sensitivity Switcher */}
-        {onSensitivityChange && (
-          <div className="mt-2.5 pt-2 border-t flex items-center justify-between text-[11px]">
-            <span className="text-muted-foreground flex items-center gap-1 font-medium">
-              <SlidersHorizontal className="w-3 h-3" /> Sensitivity:
-            </span>
-            <div className="flex items-center gap-1 bg-muted p-0.5 rounded-md">
-              {(['standard', 'high', 'ultra'] as const).map(s => (
-                <button
-                  key={s}
-                  type="button"
-                  onClick={() => onSensitivityChange(s)}
-                  className={cn(
-                    "px-2 py-0.5 rounded text-[10px] font-semibold capitalize transition-all",
-                    sensitivity === s
-                      ? "bg-background text-foreground shadow-sm"
-                      : "text-muted-foreground hover:text-foreground"
-                  )}
-                >
-                  {s === 'high' ? 'High (Auto)' : s}
-                </button>
-              ))}
+        {/* Quick Sensitivity & Phone Test Bar */}
+        <div className="mt-2.5 pt-2 border-t flex items-center justify-between text-[11px] gap-2">
+          {onSensitivityChange ? (
+            <div className="flex items-center gap-1">
+              <span className="text-muted-foreground flex items-center gap-1 font-medium text-[10px]">
+                <SlidersHorizontal className="w-3 h-3" /> Mode:
+              </span>
+              <div className="flex items-center gap-0.5 bg-muted p-0.5 rounded-md">
+                {(['standard', 'high', 'ultra'] as const).map(s => (
+                  <button
+                    key={s}
+                    type="button"
+                    onClick={() => onSensitivityChange(s)}
+                    className={cn(
+                      "px-1.5 py-0.5 rounded text-[10px] font-semibold capitalize transition-all",
+                      sensitivity === s
+                        ? "bg-background text-foreground shadow-sm"
+                        : "text-muted-foreground hover:text-foreground"
+                    )}
+                  >
+                    {s === 'ultra' ? 'Ultra (Max)' : s}
+                  </button>
+                ))}
+              </div>
             </div>
-          </div>
-        )}
+          ) : <div />}
+
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={handleTestPhoneAlert}
+            className="h-6 text-[10px] gap-1 px-2 border-red-500/40 text-red-600 hover:bg-red-500/10"
+          >
+            <Smartphone className="w-3 h-3 text-red-600" />
+            Test Phone Alert
+          </Button>
+        </div>
 
         {/* AI Proctoring Quick Controls & Testing Bar */}
         <div className="mt-2 pt-2 border-t space-y-1.5">
           <div className="flex items-center justify-between">
             <span className="text-[11px] text-muted-foreground flex items-center gap-1 font-medium">
               <Sparkles className="w-3 h-3 text-primary" />
-              Instant Malpractice Simulation
+              Proctor Testing Tools
             </span>
             <button
               type="button"
               onClick={() => setShowSimControls(!showSimControls)}
               className="text-[10px] text-primary hover:underline font-medium"
             >
-              {showSimControls ? 'Hide test tools' : 'Show test tools'}
+              {showSimControls ? 'Hide tools' : 'Show tools'}
             </button>
           </div>
 
-          {showSimControls && (
-            <div className="grid grid-cols-2 gap-1.5 pt-1">
-              <button
-                type="button"
-                onClick={() => onSimulateViolation?.('PHONE_DETECTED')}
-                className="flex items-center justify-center gap-1 text-[10px] font-bold py-1.5 px-2 rounded bg-red-500/15 text-red-600 hover:bg-red-500/25 border border-red-500/30 transition-all shadow-sm"
+          {showSimControls && onSimulateViolation && (
+            <div className="grid grid-cols-2 gap-1.5 pt-1 animate-in fade-in">
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-7 text-[10px] text-destructive border-destructive/30 hover:bg-destructive/10 justify-start"
+                onClick={() => onSimulateViolation('PHONE_DETECTED')}
               >
-                <Smartphone className="w-3 h-3" /> Test Phone (+40)
-              </button>
-              <button
-                type="button"
-                onClick={() => onSimulateViolation?.('MULTIPLE_PEOPLE')}
-                className="flex items-center justify-center gap-1 text-[10px] font-semibold py-1.5 px-2 rounded bg-orange-500/10 text-orange-600 hover:bg-orange-500/20 border border-orange-500/20 transition-all"
+                <Smartphone className="w-3 h-3 mr-1" /> Sim Phone (+40)
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-7 text-[10px] text-orange-600 border-orange-500/30 hover:bg-orange-500/10 justify-start"
+                onClick={() => onSimulateViolation('MULTIPLE_PEOPLE')}
               >
-                <Users className="w-3 h-3" /> Test Multi (+30)
-              </button>
-              <button
-                type="button"
-                onClick={() => onSimulateViolation?.('NO_FACE_DETECTED')}
-                className="flex items-center justify-center gap-1 text-[10px] font-semibold py-1.5 px-2 rounded bg-red-500/10 text-red-600 hover:bg-red-500/20 border border-red-500/20 transition-all"
+                <Users className="w-3 h-3 mr-1" /> Multi-Person (+30)
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-7 text-[10px] text-destructive border-destructive/30 hover:bg-destructive/10 justify-start"
+                onClick={() => onSimulateViolation('NO_FACE_DETECTED')}
               >
-                <UserX className="w-3 h-3" /> Test No Face (+25)
-              </button>
-              <button
-                type="button"
-                onClick={() => onSimulateViolation?.('GAZE_AWAY')}
-                className="flex items-center justify-center gap-1 text-[10px] font-semibold py-1.5 px-2 rounded bg-amber-500/10 text-amber-700 hover:bg-amber-500/20 border border-amber-500/20 transition-all"
+                <UserX className="w-3 h-3 mr-1" /> No Face (+25)
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-7 text-[10px] text-amber-600 border-amber-500/30 hover:bg-amber-500/10 justify-start"
+                onClick={() => onSimulateViolation('GAZE_AWAY')}
               >
-                <EyeOff className="w-3 h-3" /> Test Gaze (+10)
-              </button>
+                <EyeOff className="w-3 h-3 mr-1" /> Gaze Away (+10)
+              </Button>
             </div>
           )}
         </div>

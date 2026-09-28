@@ -21,6 +21,7 @@ import { QuestionPreviewModal } from './question-preview-modal';
 type QuestionListProps = {
   questions: Question[];
   onDelete: (id: string) => void;
+  onEdit?: (question: Question) => void;
 };
 
 const difficultyVariant: Record<Question['difficulty'], 'default' | 'secondary' | 'destructive'> = {
@@ -29,7 +30,7 @@ const difficultyVariant: Record<Question['difficulty'], 'default' | 'secondary' 
   hard: 'destructive',
 };
 
-export function QuestionList({ questions, onDelete }: QuestionListProps) {
+export function QuestionList({ questions, onDelete, onEdit }: QuestionListProps) {
   const [search, setSearch] = useState("");
   const [topicFilter, setTopicFilter] = useState<string>("all");
   const [difficultyFilter, setDifficultyFilter] = useState<string>("all");
@@ -145,7 +146,7 @@ export function QuestionList({ questions, onDelete }: QuestionListProps) {
                             <DropdownMenuItem className="cursor-pointer" onClick={e => { e.stopPropagation(); setPreviewQuestion(question); }}>
                               <Eye className="mr-2 h-4 w-4" /> Preview
                             </DropdownMenuItem>
-                            <DropdownMenuItem className="cursor-pointer">
+                            <DropdownMenuItem className="cursor-pointer" onClick={e => { e.stopPropagation(); onEdit?.(question); }}>
                               <Edit className="mr-2 h-4 w-4" /> Edit
                             </DropdownMenuItem>
                             <DropdownMenuSeparator />
